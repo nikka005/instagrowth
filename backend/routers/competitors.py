@@ -39,7 +39,7 @@ async def create_competitor_analysis(data: CompetitorAnalysisRequest, request: R
         "Create content addressing competitor weaknesses"
     ]
     
-    await increment_ai_usage(user.user_id, db)
+    await increment_ai_usage(user.user_id, db, feature="competitor_analysis")
     
     analysis_id = f"analysis_{uuid.uuid4().hex[:12]}"
     analysis_doc = {
