@@ -14,7 +14,7 @@ router = APIRouter(prefix="/competitors", tags=["Competitor Analysis"])
 async def create_competitor_analysis(data: CompetitorAnalysisRequest, request: Request):
     db = get_database()
     user = await get_current_user(request, db)
-    await check_ai_usage(user, db)
+    await check_ai_usage(user, db, feature="competitor_analysis")
     
     account = await db.instagram_accounts.find_one(
         {"account_id": data.account_id, "user_id": user.user_id}, {"_id": 0}
