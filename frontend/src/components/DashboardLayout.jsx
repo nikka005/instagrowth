@@ -30,6 +30,11 @@ const DashboardLayout = ({ children, auth }) => {
     { icon: <Settings className="w-5 h-5" />, label: "Settings", path: "/settings" },
   ];
 
+  // Add team link for agency/enterprise users
+  if (auth.user?.role === "agency" || auth.user?.role === "enterprise" || auth.user?.role === "admin") {
+    navItems.splice(6, 0, { icon: <Users className="w-5 h-5" />, label: "Team", path: "/team" });
+  }
+
   // Add admin link if user is admin
   if (auth.user?.role === "admin") {
     navItems.push({ icon: <Users className="w-5 h-5" />, label: "Admin", path: "/admin" });
