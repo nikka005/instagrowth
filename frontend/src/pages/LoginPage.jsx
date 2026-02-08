@@ -7,8 +7,6 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
-
 const LoginPage = ({ auth }) => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -16,38 +14,22 @@ const LoginPage = ({ auth }) => {
   const [loading, setLoading] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
   const [totpCode, setTotpCode] = useState("");
-  const [pendingUserId, setPendingUserId] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // Make direct API call to handle 2FA
-      const response = await fetch(`${API_URL}/api/auth/login${requires2FA ? `?totp_code=${totpCode}` : ''}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password })
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
-      }
+      const data = await auth.login(email, password, requires2FA ? totpCode : null);
       
       // Check if 2FA is required
       if (data.requires_2fa) {
         setRequires2FA(true);
-        setPendingUserId(data.user_id);
         toast.info('Please enter your 2FA code');
         return;
       }
       
       // Login successful
-      localStorage.setItem('token', data.token);
-      auth.setUser(data.user);
       toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (error) {
