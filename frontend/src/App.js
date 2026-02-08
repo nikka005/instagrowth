@@ -35,6 +35,7 @@ import AdminRevenuePage from "./pages/admin-panel/RevenuePage";
 import AdminAIUsagePage from "./pages/admin-panel/AIUsagePage";
 import AdminLogsPage from "./pages/admin-panel/LogsPage";
 import AdminSystemSettingsPage from "./pages/admin-panel/SystemSettingsPage";
+import AdminDocumentationPage from "./pages/admin-panel/DocumentationPage";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
