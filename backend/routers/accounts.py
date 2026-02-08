@@ -106,7 +106,7 @@ async def refresh_account_metrics(account_id: str, request: Request):
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    await check_ai_usage(user, db)
+    await check_ai_usage(user, db, feature="audit")
     metrics = await estimate_instagram_metrics(account["username"], account["niche"])
     
     await db.instagram_accounts.update_one(
@@ -119,7 +119,7 @@ async def refresh_account_metrics(account_id: str, request: Request):
             "best_posting_time": metrics.get("best_posting_time")
         }}
     )
-    await increment_ai_usage(user.user_id, db)
+    await increment_ai_usage(user.user_id, db, feature="audit")
     return metrics
 
 @router.get("/{account_id}/posting-recommendations")
@@ -133,7 +133,7 @@ async def get_posting_recommendations(account_id: str, request: Request):
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    await check_ai_usage(user, db)
+    await check_ai_usage(user, db, feature="posting_recommendations")
     
     current_metrics = {
         "estimated_followers": account.get("follower_count"),
@@ -142,5 +142,5 @@ async def get_posting_recommendations(account_id: str, request: Request):
     recommendations = await generate_posting_recommendations(
         account["username"], account["niche"], current_metrics
     )
-    await increment_ai_usage(user.user_id, db)
+    await increment_ai_usage(user.user_id, db, feature="posting_recommendations")
     return recommendations
