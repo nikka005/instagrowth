@@ -26,6 +26,7 @@ class User(BaseModel):
     email_verified: bool = False
     team_id: Optional[str] = None
     extra_accounts: int = 0
+    onboarding_completed: bool = False
     created_at: datetime
     updated_at: Optional[datetime] = None
 
