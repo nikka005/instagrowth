@@ -74,7 +74,7 @@ async def create_audit(data: AuditRequest, request: Request):
                        "week4": ["Review analytics", "Plan next month"]}
         }
     
-    await increment_ai_usage(user.user_id, db)
+    await increment_ai_usage(user.user_id, db, feature="audit")
     
     audit_id = f"audit_{uuid.uuid4().hex[:12]}"
     audit_doc = {
