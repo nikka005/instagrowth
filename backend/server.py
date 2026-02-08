@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, UploadFile, File
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,7 +13,8 @@ from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
 import httpx
-from io import BytesIO
+from io import BytesIO, StringIO
+import csv
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor
@@ -22,6 +24,8 @@ import base64
 import asyncio
 import resend
 import secrets
+from collections import defaultdict
+import time
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -41,6 +45,11 @@ SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@instagrowth.app')
 # Initialize Resend
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
+
+# Rate limiting storage
+rate_limit_storage = defaultdict(list)
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX_REQUESTS = 10  # max AI requests per minute
 
 # Create the main app
 app = FastAPI(title="InstaGrowth OS API")
@@ -77,6 +86,7 @@ class User(BaseModel):
     ai_usage_current: int = 0
     email_verified: bool = False
     team_id: Optional[str] = None
+    extra_accounts: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -92,6 +102,7 @@ class UserResponse(BaseModel):
     ai_usage_current: int
     email_verified: bool = False
     team_id: Optional[str] = None
+    extra_accounts: int = 0
 
 # Password Reset Models
 class PasswordResetRequest(BaseModel):
@@ -107,7 +118,7 @@ class TeamCreate(BaseModel):
 
 class TeamInvite(BaseModel):
     email: EmailStr
-    role: str = "viewer"  # viewer, editor, admin
+    role: str = "viewer"
 
 class TeamMemberUpdate(BaseModel):
     role: str
@@ -128,8 +139,8 @@ class TeamMember(BaseModel):
     user_id: str
     email: str
     name: str
-    role: str  # owner, admin, editor, viewer
-    status: str = "pending"  # pending, active
+    role: str
+    status: str = "pending"
     invited_at: datetime
     joined_at: Optional[datetime] = None
 
@@ -144,11 +155,15 @@ class InstagramAccountCreate(BaseModel):
     username: str
     niche: str
     notes: Optional[str] = None
+    client_name: Optional[str] = None
+    client_email: Optional[str] = None
 
 class InstagramAccountUpdate(BaseModel):
     username: Optional[str] = None
     niche: Optional[str] = None
     notes: Optional[str] = None
+    client_name: Optional[str] = None
+    client_email: Optional[str] = None
 
 class InstagramAccount(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -158,6 +173,8 @@ class InstagramAccount(BaseModel):
     username: str
     niche: str
     notes: Optional[str] = None
+    client_name: Optional[str] = None
+    client_email: Optional[str] = None
     follower_count: Optional[int] = None
     engagement_rate: Optional[float] = None
     estimated_reach: Optional[int] = None
@@ -201,6 +218,7 @@ class ContentItem(BaseModel):
     user_id: str
     content_type: str
     content: List[str]
+    is_favorite: bool = False
     created_at: datetime
 
 # Growth Plan Models
@@ -216,6 +234,115 @@ class GrowthPlan(BaseModel):
     user_id: str
     duration: int
     daily_tasks: List[Dict[str, Any]]
+    created_at: datetime
+
+# DM Template Models
+class DMTemplateCreate(BaseModel):
+    name: str
+    category: str  # welcome, sales, support, follow_up, lead_qualify
+    message: str
+    variables: Optional[List[str]] = None
+
+class DMTemplate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    template_id: str
+    user_id: str
+    name: str
+    category: str
+    message: str
+    variables: List[str] = []
+    use_count: int = 0
+    created_at: datetime
+
+# DM Reply Bot Models
+class DMReplySettings(BaseModel):
+    account_id: str
+    enabled: bool = False
+    welcome_template_id: Optional[str] = None
+    lead_qualify_enabled: bool = False
+    lead_questions: Optional[List[str]] = None
+    auto_reply_delay_min: int = 30  # seconds
+    auto_reply_delay_max: int = 120
+    working_hours_start: int = 9  # 9 AM
+    working_hours_end: int = 21  # 9 PM
+
+class DMConversation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    conversation_id: str
+    account_id: str
+    user_id: str
+    contact_username: str
+    is_lead: bool = False
+    lead_score: int = 0
+    messages: List[Dict[str, Any]] = []
+    status: str = "active"  # active, qualified, not_qualified, converted
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+# Competitor Analysis Models
+class CompetitorAnalysisRequest(BaseModel):
+    account_id: str
+    competitor_usernames: List[str]
+
+class CompetitorAnalysis(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    analysis_id: str
+    account_id: str
+    user_id: str
+    competitors: List[Dict[str, Any]]
+    insights: List[str]
+    opportunities: List[str]
+    created_at: datetime
+
+# A/B Test Models
+class ABTestCreate(BaseModel):
+    account_id: str
+    content_type: str  # hooks, captions
+    variant_a: str
+    variant_b: str
+
+class ABTest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    test_id: str
+    account_id: str
+    user_id: str
+    content_type: str
+    variant_a: str
+    variant_b: str
+    votes_a: int = 0
+    votes_b: int = 0
+    winner: Optional[str] = None
+    status: str = "active"  # active, completed
+    created_at: datetime
+
+# One-Time Product Models
+class OneTimeProduct(BaseModel):
+    product_id: str
+    name: str
+    description: str
+    price: float
+    type: str  # recovery_report, content_pack, audit_pdf
+
+class ProductPurchase(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    purchase_id: str
+    user_id: str
+    product_id: str
+    amount: float
+    status: str
+    data: Optional[Dict[str, Any]] = None
+    created_at: datetime
+
+# Notification Models
+class Notification(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    notification_id: str
+    user_id: str
+    type: str  # team_invite, plan_upgrade, ai_limit, system
+    title: str
+    message: str
+    read: bool = False
+    action_url: Optional[str] = None
     created_at: datetime
 
 # Payment Models
@@ -250,8 +377,21 @@ def create_token(user_id: str, email: str, expires_days: int = 7) -> str:
 def create_verification_token() -> str:
     return secrets.token_urlsafe(32)
 
+def check_rate_limit(user_id: str) -> bool:
+    """Check if user has exceeded rate limit for AI requests"""
+    current_time = time.time()
+    user_requests = rate_limit_storage[user_id]
+    
+    # Remove old requests outside the window
+    rate_limit_storage[user_id] = [t for t in user_requests if current_time - t < RATE_LIMIT_WINDOW]
+    
+    if len(rate_limit_storage[user_id]) >= RATE_LIMIT_MAX_REQUESTS:
+        return False
+    
+    rate_limit_storage[user_id].append(current_time)
+    return True
+
 async def send_email(to_email: str, subject: str, html_content: str):
-    """Send email using Resend"""
     if not RESEND_API_KEY or RESEND_API_KEY == "re_placeholder_key":
         logger.warning(f"Email not sent (no API key): {subject} to {to_email}")
         return {"status": "skipped", "message": "Email service not configured"}
@@ -270,6 +410,21 @@ async def send_email(to_email: str, subject: str, html_content: str):
     except Exception as e:
         logger.error(f"Failed to send email: {str(e)}")
         return {"status": "error", "message": str(e)}
+
+async def create_notification(user_id: str, type: str, title: str, message: str, action_url: Optional[str] = None):
+    """Create a notification for a user"""
+    notification_doc = {
+        "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+        "user_id": user_id,
+        "type": type,
+        "title": title,
+        "message": message,
+        "read": False,
+        "action_url": action_url,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notification_doc)
+    return notification_doc
 
 async def get_current_user(request: Request) -> User:
     session_token = request.cookies.get("session_token")
@@ -312,11 +467,9 @@ async def get_current_user(request: Request) -> User:
     return User(**user_doc)
 
 async def get_user_with_team_access(request: Request) -> tuple:
-    """Get user and check team access for shared accounts"""
     user = await get_current_user(request)
     team_ids = [user.team_id] if user.team_id else []
     
-    # Get teams where user is a member
     member_teams = await db.team_members.find(
         {"user_id": user.user_id, "status": "active"},
         {"_id": 0, "team_id": 1}
@@ -327,12 +480,16 @@ async def get_user_with_team_access(request: Request) -> tuple:
 
 async def check_account_limit(user: User):
     count = await db.instagram_accounts.count_documents({"user_id": user.user_id})
-    if count >= user.account_limit:
-        raise HTTPException(status_code=403, detail=f"Account limit reached ({user.account_limit}). Upgrade your plan.")
+    total_limit = user.account_limit + user.extra_accounts
+    if count >= total_limit:
+        raise HTTPException(status_code=403, detail=f"Account limit reached ({total_limit}). Upgrade your plan or purchase extra accounts.")
 
 async def check_ai_usage(user: User):
     if user.ai_usage_current >= user.ai_usage_limit:
         raise HTTPException(status_code=403, detail=f"AI usage limit reached ({user.ai_usage_limit}). Upgrade your plan.")
+    
+    if not check_rate_limit(user.user_id):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please wait before making more AI requests.")
 
 async def increment_ai_usage(user_id: str):
     await db.users.update_one(
@@ -356,22 +513,17 @@ async def generate_ai_content(prompt: str, system_message: str) -> str:
     return response
 
 async def estimate_instagram_metrics(username: str, niche: str) -> Dict[str, Any]:
-    """Use AI to estimate Instagram metrics based on username and niche"""
     system_message = """You are an Instagram analytics expert. Based on the username and niche, 
     provide realistic estimates for Instagram account metrics. Return JSON with:
-    - estimated_followers (int, based on typical accounts in this niche)
+    - estimated_followers (int)
     - estimated_engagement_rate (float, 1-10%)
-    - estimated_reach (int, typical reach per post)
-    - posting_frequency (string, e.g., "daily", "3x per week")
-    - best_posting_time (string, e.g., "9 AM - 12 PM EST")
+    - estimated_reach (int)
+    - posting_frequency (string)
+    - best_posting_time (string with timezone)
     - growth_potential (string: low/medium/high)
-    Be realistic and base estimates on typical performance in the niche."""
+    Be realistic based on typical performance in the niche."""
     
-    prompt = f"""Estimate Instagram metrics for:
-    Username: @{username}
-    Niche: {niche}
-    
-    Provide realistic estimates based on typical accounts in this niche."""
+    prompt = f"Estimate Instagram metrics for @{username} in the {niche} niche."
     
     try:
         response = await generate_ai_content(prompt, system_message)
@@ -391,8 +543,108 @@ async def estimate_instagram_metrics(username: str, niche: str) -> Dict[str, Any
             "estimated_engagement_rate": 3.5,
             "estimated_reach": 2000,
             "posting_frequency": "3x per week",
-            "best_posting_time": "9 AM - 12 PM",
+            "best_posting_time": "9 AM - 12 PM EST",
             "growth_potential": "medium"
+        }
+
+async def generate_posting_recommendations(username: str, niche: str, current_metrics: Dict) -> Dict[str, Any]:
+    """Generate AI-based posting time recommendations"""
+    system_message = """You are an Instagram growth strategist. Analyze the account and provide 
+    optimal posting time recommendations. Return JSON with:
+    - best_times (array of {day: string, times: array of strings})
+    - frequency (string, e.g., "5-7 posts per week")
+    - content_mix (object with percentages for reels, posts, stories)
+    - peak_engagement_windows (array of time ranges)
+    - avoid_times (array of times to avoid posting)
+    - reasoning (string explaining the recommendations)"""
+    
+    prompt = f"""Provide posting recommendations for:
+    Username: @{username}
+    Niche: {niche}
+    Current followers: {current_metrics.get('estimated_followers', 'Unknown')}
+    Current engagement: {current_metrics.get('estimated_engagement_rate', 'Unknown')}%"""
+    
+    try:
+        response = await generate_ai_content(prompt, system_message)
+        import json
+        cleaned = response.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        return json.loads(cleaned.strip())
+    except Exception as e:
+        logger.error(f"Posting recommendations error: {e}")
+        return {
+            "best_times": [
+                {"day": "Monday", "times": ["9:00 AM", "12:00 PM", "6:00 PM"]},
+                {"day": "Wednesday", "times": ["9:00 AM", "12:00 PM", "7:00 PM"]},
+                {"day": "Friday", "times": ["10:00 AM", "2:00 PM", "8:00 PM"]}
+            ],
+            "frequency": "5-7 posts per week",
+            "content_mix": {"reels": 60, "posts": 25, "stories": 15},
+            "peak_engagement_windows": ["9-11 AM", "7-9 PM"],
+            "avoid_times": ["2-5 AM", "During major events"],
+            "reasoning": "Based on typical engagement patterns in your niche"
+        }
+
+async def generate_dm_reply(message: str, context: str, tone: str = "friendly") -> str:
+    """Generate AI-powered DM reply"""
+    system_message = f"""You are an Instagram account manager. Generate a {tone}, professional 
+    DM reply. Keep it natural, avoid sounding robotic. Include appropriate emojis.
+    Context: {context}
+    Return ONLY the reply message, nothing else."""
+    
+    prompt = f"Generate a reply to this DM: \"{message}\""
+    
+    try:
+        response = await generate_ai_content(prompt, system_message)
+        return response.strip()
+    except Exception as e:
+        logger.error(f"DM reply generation error: {e}")
+        return "Thanks for reaching out! I'll get back to you soon. 😊"
+
+async def analyze_competitor(competitor_username: str, niche: str) -> Dict[str, Any]:
+    """AI-based competitor analysis"""
+    system_message = """You are an Instagram competitive analyst. Analyze the competitor and provide insights.
+    Return JSON with:
+    - estimated_followers (int)
+    - estimated_engagement_rate (float)
+    - content_strategy (string)
+    - posting_frequency (string)
+    - strengths (array of strings)
+    - weaknesses (array of strings)
+    - content_types (object with percentages)
+    - hashtag_strategy (string)
+    - audience_demographics (string)"""
+    
+    prompt = f"Analyze Instagram competitor @{competitor_username} in the {niche} niche."
+    
+    try:
+        response = await generate_ai_content(prompt, system_message)
+        import json
+        cleaned = response.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        return json.loads(cleaned.strip())
+    except Exception as e:
+        logger.error(f"Competitor analysis error: {e}")
+        return {
+            "estimated_followers": 10000,
+            "estimated_engagement_rate": 4.0,
+            "content_strategy": "Consistent posting with trending content",
+            "posting_frequency": "Daily",
+            "strengths": ["Strong visual brand", "Engaging captions"],
+            "weaknesses": ["Limited story engagement", "Inconsistent reels"],
+            "content_types": {"reels": 50, "posts": 30, "stories": 20},
+            "hashtag_strategy": "Mix of branded and trending hashtags",
+            "audience_demographics": "18-34 year olds interested in " + niche
         }
 
 # ==================== AUTH ROUTES ====================
@@ -420,12 +672,12 @@ async def register(data: UserCreate, request: Request):
         "email_verified": False,
         "verification_token": verification_token,
         "team_id": None,
+        "extra_accounts": 0,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": None
     }
     await db.users.insert_one(user_doc)
     
-    # Send verification email
     origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
     verify_url = f"{origin}/verify-email?token={verification_token}"
     
@@ -435,20 +687,24 @@ async def register(data: UserCreate, request: Request):
             <h1 style="color: white; margin: 0;">Welcome to InstaGrowth OS!</h1>
         </div>
         <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
-            <p style="font-size: 16px; color: #333;">Hi {data.name},</p>
-            <p style="font-size: 16px; color: #333;">Please verify your email address to get started:</p>
+            <p>Hi {data.name},</p>
+            <p>Please verify your email address:</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="{verify_url}" style="background: #6366F1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Verify Email</a>
             </div>
-            <p style="font-size: 14px; color: #666;">Or copy this link: {verify_url}</p>
-            <p style="font-size: 14px; color: #666;">This link expires in 24 hours.</p>
         </div>
     </div>
     """
     await send_email(data.email, "Verify your InstaGrowth OS account", email_html)
     
+    # Create welcome notification
+    await create_notification(
+        user_id, "system", "Welcome to InstaGrowth OS!",
+        "Start by adding your first Instagram account.", "/accounts"
+    )
+    
     token = create_token(user_id, data.email)
-    return {"token": token, "user": UserResponse(**user_doc), "message": "Please check your email to verify your account"}
+    return {"token": token, "user": UserResponse(**user_doc)}
 
 @api_router.post("/auth/verify-email")
 async def verify_email(token: str):
@@ -483,8 +739,8 @@ async def resend_verification(request: Request, user: User = Depends(get_current
             <h1 style="color: white; margin: 0;">Verify Your Email</h1>
         </div>
         <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
-            <p style="font-size: 16px; color: #333;">Hi {user.name},</p>
-            <p style="font-size: 16px; color: #333;">Click below to verify your email:</p>
+            <p>Hi {user.name},</p>
+            <p>Click below to verify your email:</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="{verify_url}" style="background: #6366F1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Verify Email</a>
             </div>
@@ -499,7 +755,6 @@ async def resend_verification(request: Request, user: User = Depends(get_current
 async def forgot_password(data: PasswordResetRequest, request: Request):
     user_doc = await db.users.find_one({"email": data.email}, {"_id": 0})
     if not user_doc:
-        # Don't reveal if email exists
         return {"message": "If this email exists, a password reset link will be sent"}
     
     reset_token = create_verification_token()
@@ -523,13 +778,12 @@ async def forgot_password(data: PasswordResetRequest, request: Request):
             <h1 style="color: white; margin: 0;">Reset Your Password</h1>
         </div>
         <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
-            <p style="font-size: 16px; color: #333;">Hi {user_doc['name']},</p>
-            <p style="font-size: 16px; color: #333;">You requested a password reset. Click below to create a new password:</p>
+            <p>Hi {user_doc['name']},</p>
+            <p>Click below to reset your password:</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="{reset_url}" style="background: #6366F1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Reset Password</a>
             </div>
             <p style="font-size: 14px; color: #666;">This link expires in 1 hour.</p>
-            <p style="font-size: 14px; color: #666;">If you didn't request this, please ignore this email.</p>
         </div>
     </div>
     """
@@ -539,10 +793,7 @@ async def forgot_password(data: PasswordResetRequest, request: Request):
 
 @api_router.post("/auth/reset-password")
 async def reset_password(data: PasswordResetConfirm):
-    reset_doc = await db.password_resets.find_one(
-        {"token": data.token, "used": False},
-        {"_id": 0}
-    )
+    reset_doc = await db.password_resets.find_one({"token": data.token, "used": False}, {"_id": 0})
     if not reset_doc:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
     
@@ -552,17 +803,12 @@ async def reset_password(data: PasswordResetConfirm):
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Reset token has expired")
     
-    # Update password
     await db.users.update_one(
         {"user_id": reset_doc["user_id"]},
         {"$set": {"password_hash": hash_password(data.new_password), "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     
-    # Mark token as used
-    await db.password_resets.update_one(
-        {"token": data.token},
-        {"$set": {"used": True}}
-    )
+    await db.password_resets.update_one({"token": data.token}, {"$set": {"used": True}})
     
     return {"message": "Password reset successfully"}
 
@@ -620,12 +866,14 @@ async def create_session(request: Request, response: Response):
             "account_limit": 1,
             "ai_usage_limit": 10,
             "ai_usage_current": 0,
-            "email_verified": True,  # Google OAuth emails are verified
+            "email_verified": True,
             "team_id": None,
+            "extra_accounts": 0,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": None
         }
         await db.users.insert_one(user_doc)
+        await create_notification(user_id, "system", "Welcome!", "Start by adding your Instagram account.", "/accounts")
     else:
         user_id = user_doc["user_id"]
         if auth_data.get("picture") != user_doc.get("picture"):
@@ -669,11 +917,41 @@ async def logout(request: Request, response: Response):
     response.delete_cookie(key="session_token", path="/")
     return {"message": "Logged out"}
 
+# ==================== NOTIFICATION ROUTES ====================
+
+@api_router.get("/notifications")
+async def get_notifications(user: User = Depends(get_current_user)):
+    notifications = await db.notifications.find(
+        {"user_id": user.user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(50)
+    return notifications
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_count(user: User = Depends(get_current_user)):
+    count = await db.notifications.count_documents({"user_id": user.user_id, "read": False})
+    return {"count": count}
+
+@api_router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, user: User = Depends(get_current_user)):
+    await db.notifications.update_one(
+        {"notification_id": notification_id, "user_id": user.user_id},
+        {"$set": {"read": True}}
+    )
+    return {"message": "Notification marked as read"}
+
+@api_router.put("/notifications/read-all")
+async def mark_all_read(user: User = Depends(get_current_user)):
+    await db.notifications.update_many(
+        {"user_id": user.user_id, "read": False},
+        {"$set": {"read": True}}
+    )
+    return {"message": "All notifications marked as read"}
+
 # ==================== TEAM MANAGEMENT ROUTES ====================
 
 @api_router.post("/teams")
 async def create_team(data: TeamCreate, user: User = Depends(get_current_user)):
-    # Only agency and enterprise can create teams
     if user.role not in ["agency", "enterprise", "admin"]:
         raise HTTPException(status_code=403, detail="Team management requires Agency plan or higher")
     
@@ -688,7 +966,6 @@ async def create_team(data: TeamCreate, user: User = Depends(get_current_user)):
     }
     await db.teams.insert_one(team_doc)
     
-    # Add owner as team member
     member_doc = {
         "member_id": f"member_{uuid.uuid4().hex[:12]}",
         "team_id": team_id,
@@ -702,7 +979,6 @@ async def create_team(data: TeamCreate, user: User = Depends(get_current_user)):
     }
     await db.team_members.insert_one(member_doc)
     
-    # Update user's team_id
     await db.users.update_one(
         {"user_id": user.user_id},
         {"$set": {"team_id": team_id, "updated_at": datetime.now(timezone.utc).isoformat()}}
@@ -712,7 +988,6 @@ async def create_team(data: TeamCreate, user: User = Depends(get_current_user)):
 
 @api_router.get("/teams")
 async def get_user_teams(user: User = Depends(get_current_user)):
-    # Get teams where user is owner or member
     member_teams = await db.team_members.find(
         {"user_id": user.user_id, "status": "active"},
         {"_id": 0}
@@ -725,7 +1000,6 @@ async def get_user_teams(user: User = Depends(get_current_user)):
 
 @api_router.get("/teams/{team_id}")
 async def get_team(team_id: str, user: User = Depends(get_current_user)):
-    # Check user has access
     member = await db.team_members.find_one(
         {"team_id": team_id, "user_id": user.user_id, "status": "active"},
         {"_id": 0}
@@ -741,7 +1015,6 @@ async def get_team(team_id: str, user: User = Depends(get_current_user)):
 
 @api_router.post("/teams/{team_id}/invite")
 async def invite_team_member(team_id: str, data: TeamInvite, request: Request, user: User = Depends(get_current_user)):
-    # Check user is owner or admin
     member = await db.team_members.find_one(
         {"team_id": team_id, "user_id": user.user_id, "role": {"$in": ["owner", "admin"]}, "status": "active"},
         {"_id": 0}
@@ -749,11 +1022,7 @@ async def invite_team_member(team_id: str, data: TeamInvite, request: Request, u
     if not member:
         raise HTTPException(status_code=403, detail="Only team owners and admins can invite members")
     
-    # Check if already invited
-    existing = await db.team_members.find_one(
-        {"team_id": team_id, "email": data.email},
-        {"_id": 0}
-    )
+    existing = await db.team_members.find_one({"team_id": team_id, "email": data.email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="User already invited to this team")
     
@@ -763,7 +1032,7 @@ async def invite_team_member(team_id: str, data: TeamInvite, request: Request, u
     member_doc = {
         "member_id": f"member_{uuid.uuid4().hex[:12]}",
         "team_id": team_id,
-        "user_id": None,  # Will be set when user accepts
+        "user_id": None,
         "email": data.email,
         "name": "",
         "role": data.role,
@@ -774,7 +1043,16 @@ async def invite_team_member(team_id: str, data: TeamInvite, request: Request, u
     }
     await db.team_members.insert_one(member_doc)
     
-    # Send invitation email
+    # Create notification for invitee if they exist
+    invitee = await db.users.find_one({"email": data.email}, {"_id": 0})
+    if invitee:
+        await create_notification(
+            invitee["user_id"], "team_invite",
+            f"Team Invitation from {team['name']}",
+            f"{user.name} invited you to join their team as {data.role}.",
+            f"/accept-invite?token={invite_token}"
+        )
+    
     origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
     invite_url = f"{origin}/accept-invite?token={invite_token}"
     
@@ -784,9 +1062,9 @@ async def invite_team_member(team_id: str, data: TeamInvite, request: Request, u
             <h1 style="color: white; margin: 0;">Team Invitation</h1>
         </div>
         <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
-            <p style="font-size: 16px; color: #333;">You've been invited to join <strong>{team['name']}</strong> on InstaGrowth OS!</p>
-            <p style="font-size: 16px; color: #333;">Invited by: {user.name}</p>
-            <p style="font-size: 16px; color: #333;">Your role: {data.role.capitalize()}</p>
+            <p>You've been invited to join <strong>{team['name']}</strong> on InstaGrowth OS!</p>
+            <p>Invited by: {user.name}</p>
+            <p>Your role: {data.role.capitalize()}</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="{invite_url}" style="background: #6366F1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Accept Invitation</a>
             </div>
@@ -799,17 +1077,13 @@ async def invite_team_member(team_id: str, data: TeamInvite, request: Request, u
 
 @api_router.post("/teams/accept-invite")
 async def accept_invite(token: str, user: User = Depends(get_current_user)):
-    invite = await db.team_members.find_one(
-        {"invite_token": token, "status": "pending"},
-        {"_id": 0}
-    )
+    invite = await db.team_members.find_one({"invite_token": token, "status": "pending"}, {"_id": 0})
     if not invite:
         raise HTTPException(status_code=400, detail="Invalid or expired invitation")
     
     if invite["email"] != user.email:
         raise HTTPException(status_code=403, detail="This invitation was sent to a different email")
     
-    # Update member
     await db.team_members.update_one(
         {"invite_token": token},
         {"$set": {
@@ -821,7 +1095,6 @@ async def accept_invite(token: str, user: User = Depends(get_current_user)):
         }}
     )
     
-    # Update user's team_id if not set
     if not user.team_id:
         await db.users.update_one(
             {"user_id": user.user_id},
@@ -832,7 +1105,6 @@ async def accept_invite(token: str, user: User = Depends(get_current_user)):
 
 @api_router.get("/teams/{team_id}/members")
 async def get_team_members(team_id: str, user: User = Depends(get_current_user)):
-    # Check user has access
     member = await db.team_members.find_one(
         {"team_id": team_id, "user_id": user.user_id, "status": "active"},
         {"_id": 0}
@@ -845,7 +1117,6 @@ async def get_team_members(team_id: str, user: User = Depends(get_current_user))
 
 @api_router.put("/teams/{team_id}/members/{member_id}")
 async def update_team_member(team_id: str, member_id: str, data: TeamMemberUpdate, user: User = Depends(get_current_user)):
-    # Check user is owner or admin
     current_member = await db.team_members.find_one(
         {"team_id": team_id, "user_id": user.user_id, "role": {"$in": ["owner", "admin"]}, "status": "active"},
         {"_id": 0}
@@ -853,7 +1124,6 @@ async def update_team_member(team_id: str, member_id: str, data: TeamMemberUpdat
     if not current_member:
         raise HTTPException(status_code=403, detail="Only team owners and admins can update members")
     
-    # Can't change owner role
     target_member = await db.team_members.find_one({"member_id": member_id}, {"_id": 0})
     if target_member and target_member["role"] == "owner":
         raise HTTPException(status_code=400, detail="Cannot change owner's role")
@@ -867,7 +1137,6 @@ async def update_team_member(team_id: str, member_id: str, data: TeamMemberUpdat
 
 @api_router.delete("/teams/{team_id}/members/{member_id}")
 async def remove_team_member(team_id: str, member_id: str, user: User = Depends(get_current_user)):
-    # Check user is owner or admin
     current_member = await db.team_members.find_one(
         {"team_id": team_id, "user_id": user.user_id, "role": {"$in": ["owner", "admin"]}, "status": "active"},
         {"_id": 0}
@@ -875,7 +1144,6 @@ async def remove_team_member(team_id: str, member_id: str, user: User = Depends(
     if not current_member:
         raise HTTPException(status_code=403, detail="Only team owners and admins can remove members")
     
-    # Can't remove owner
     target_member = await db.team_members.find_one({"member_id": member_id}, {"_id": 0})
     if target_member and target_member["role"] == "owner":
         raise HTTPException(status_code=400, detail="Cannot remove team owner")
@@ -886,7 +1154,6 @@ async def remove_team_member(team_id: str, member_id: str, user: User = Depends(
 
 @api_router.put("/teams/{team_id}/settings")
 async def update_team_settings(team_id: str, data: WhiteLabelSettings, user: User = Depends(get_current_user)):
-    # Check user is owner
     member = await db.team_members.find_one(
         {"team_id": team_id, "user_id": user.user_id, "role": "owner", "status": "active"},
         {"_id": 0}
@@ -910,7 +1177,6 @@ async def update_team_settings(team_id: str, data: WhiteLabelSettings, user: Use
 
 @api_router.post("/teams/{team_id}/logo")
 async def upload_team_logo(team_id: str, file: UploadFile = File(...), user: User = Depends(get_current_user)):
-    # Check user is owner
     member = await db.team_members.find_one(
         {"team_id": team_id, "user_id": user.user_id, "role": "owner", "status": "active"},
         {"_id": 0}
@@ -918,7 +1184,6 @@ async def upload_team_logo(team_id: str, file: UploadFile = File(...), user: Use
     if not member:
         raise HTTPException(status_code=403, detail="Only team owner can upload logo")
     
-    # Read and encode logo as base64
     contents = await file.read()
     logo_b64 = base64.b64encode(contents).decode()
     logo_url = f"data:{file.content_type};base64,{logo_b64}"
@@ -933,7 +1198,6 @@ async def upload_team_logo(team_id: str, file: UploadFile = File(...), user: Use
 async def create_account(data: InstagramAccountCreate, user: User = Depends(get_current_user)):
     await check_account_limit(user)
     
-    # Get AI-estimated metrics
     metrics = await estimate_instagram_metrics(data.username, data.niche)
     
     account_id = f"acc_{uuid.uuid4().hex[:12]}"
@@ -944,6 +1208,8 @@ async def create_account(data: InstagramAccountCreate, user: User = Depends(get_
         "username": data.username,
         "niche": data.niche,
         "notes": data.notes,
+        "client_name": data.client_name,
+        "client_email": data.client_email,
         "follower_count": metrics.get("estimated_followers"),
         "engagement_rate": metrics.get("estimated_engagement_rate"),
         "estimated_reach": metrics.get("estimated_reach"),
@@ -960,7 +1226,6 @@ async def create_account(data: InstagramAccountCreate, user: User = Depends(get_
 async def get_accounts(request: Request):
     user, team_ids = await get_user_with_team_access(request)
     
-    # Get user's own accounts and team accounts
     query = {"$or": [{"user_id": user.user_id}]}
     if team_ids:
         query["$or"].append({"team_id": {"$in": team_ids}})
@@ -999,16 +1264,13 @@ async def update_account(account_id: str, data: InstagramAccountUpdate, user: Us
 
 @api_router.delete("/accounts/{account_id}")
 async def delete_account(account_id: str, user: User = Depends(get_current_user)):
-    result = await db.instagram_accounts.delete_one(
-        {"account_id": account_id, "user_id": user.user_id}
-    )
+    result = await db.instagram_accounts.delete_one({"account_id": account_id, "user_id": user.user_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Account not found")
     return {"message": "Account deleted"}
 
 @api_router.post("/accounts/{account_id}/refresh-metrics")
 async def refresh_account_metrics(account_id: str, user: User = Depends(get_current_user)):
-    """Refresh AI-estimated metrics for an account"""
     account = await db.instagram_accounts.find_one(
         {"account_id": account_id, "user_id": user.user_id},
         {"_id": 0}
@@ -1035,6 +1297,31 @@ async def refresh_account_metrics(account_id: str, user: User = Depends(get_curr
     
     return metrics
 
+@api_router.get("/accounts/{account_id}/posting-recommendations")
+async def get_posting_recommendations(account_id: str, user: User = Depends(get_current_user)):
+    """Get AI-powered posting time recommendations"""
+    account = await db.instagram_accounts.find_one(
+        {"account_id": account_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    
+    await check_ai_usage(user)
+    
+    current_metrics = {
+        "estimated_followers": account.get("follower_count"),
+        "estimated_engagement_rate": account.get("engagement_rate")
+    }
+    
+    recommendations = await generate_posting_recommendations(
+        account["username"], account["niche"], current_metrics
+    )
+    
+    await increment_ai_usage(user.user_id)
+    
+    return recommendations
+
 # ==================== AI AUDIT ROUTES ====================
 
 @api_router.post("/audits", response_model=Audit)
@@ -1048,26 +1335,22 @@ async def create_audit(data: AuditRequest, user: User = Depends(get_current_user
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    system_message = """You are an Instagram growth expert analyzing accounts. 
-    Provide detailed, actionable analysis in JSON format with these exact keys:
+    system_message = """You are an Instagram growth expert. Provide detailed analysis in JSON:
     - engagement_score (0-100)
     - shadowban_risk (low/medium/high)
     - content_consistency (0-100)
     - estimated_followers (int)
-    - estimated_engagement_rate (float, percentage)
-    - growth_mistakes (array of 3-5 specific mistakes)
-    - recommendations (array of 5-7 actionable recommendations)
-    - roadmap (object with week1, week2, week3, week4 arrays of daily tasks)
-    Be specific and professional. Response must be valid JSON only."""
+    - estimated_engagement_rate (float)
+    - growth_mistakes (array of 3-5 mistakes)
+    - recommendations (array of 5-7 recommendations)
+    - roadmap (object with week1-4 arrays)
+    Response must be valid JSON only."""
     
-    prompt = f"""Analyze this Instagram account:
+    prompt = f"""Analyze Instagram account:
     Username: @{account['username']}
     Niche: {account['niche']}
-    Notes: {account.get('notes', 'No additional notes')}
-    Current estimated followers: {account.get('follower_count', 'Unknown')}
-    
-    Generate a comprehensive audit with engagement score, shadowban risk assessment, 
-    content consistency rating, common growth mistakes, and a 30-day recovery roadmap."""
+    Notes: {account.get('notes', 'None')}
+    Current followers: {account.get('follower_count', 'Unknown')}"""
     
     try:
         ai_response = await generate_ai_content(prompt, system_message)
@@ -1096,17 +1379,17 @@ async def create_audit(data: AuditRequest, user: User = Depends(get_current_user
                 "Missing engagement in first 30 minutes"
             ],
             "recommendations": [
-                "Post consistently at peak hours (9AM, 12PM, 6PM)",
-                "Use trending audio in first 3 seconds of Reels",
-                "Add strong CTAs asking for saves and shares",
-                "Engage with similar accounts 30 min before posting",
-                "Use 20-30 relevant hashtags per post"
+                "Post consistently at peak hours",
+                "Use trending audio in Reels",
+                "Add strong CTAs for saves and shares",
+                "Engage with similar accounts before posting",
+                "Use 20-30 relevant hashtags"
             ],
             "roadmap": {
-                "week1": ["Audit existing content", "Create content calendar", "Research trending audio"],
-                "week2": ["Post 5 Reels", "Engage 30min daily", "Optimize bio"],
-                "week3": ["Analyze best performing content", "Double down on winners", "Test new formats"],
-                "week4": ["Review analytics", "Refine strategy", "Plan next month"]
+                "week1": ["Audit content", "Create calendar", "Research trends"],
+                "week2": ["Post 5 Reels", "Engage daily", "Optimize bio"],
+                "week3": ["Analyze performance", "Double down on winners"],
+                "week4": ["Review analytics", "Plan next month"]
             }
         }
     
@@ -1148,27 +1431,20 @@ async def get_audits(account_id: Optional[str] = None, user: User = Depends(get_
 
 @api_router.get("/audits/{audit_id}", response_model=Audit)
 async def get_audit(audit_id: str, user: User = Depends(get_current_user)):
-    audit = await db.audits.find_one(
-        {"audit_id": audit_id, "user_id": user.user_id},
-        {"_id": 0}
-    )
+    audit = await db.audits.find_one({"audit_id": audit_id, "user_id": user.user_id}, {"_id": 0})
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     return Audit(**audit)
 
 @api_router.get("/audits/{audit_id}/pdf")
 async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
-    audit = await db.audits.find_one(
-        {"audit_id": audit_id, "user_id": user.user_id},
-        {"_id": 0}
-    )
+    audit = await db.audits.find_one({"audit_id": audit_id, "user_id": user.user_id}, {"_id": 0})
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     
     if user.role == "starter":
         raise HTTPException(status_code=403, detail="PDF export requires Pro plan or higher")
     
-    # Get white-label settings if user has a team
     team = None
     if user.team_id:
         team = await db.teams.find_one({"team_id": user.team_id}, {"_id": 0})
@@ -1181,32 +1457,28 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
-    # Header with brand color
     p.setFillColor(HexColor(brand_color))
     p.rect(0, height - 100, width, 100, fill=True)
     
-    # Logo if available
     if logo_url and logo_url.startswith("data:"):
         try:
             logo_data = logo_url.split(",")[1]
             logo_bytes = base64.b64decode(logo_data)
             logo_img = ImageReader(BytesIO(logo_bytes))
             p.drawImage(logo_img, 30, height - 80, width=50, height=50, preserveAspectRatio=True)
-        except Exception as e:
-            logger.warning(f"Failed to load logo: {e}")
+        except:
+            pass
     
     p.setFillColor(HexColor("#FFFFFF"))
     p.setFont("Helvetica-Bold", 20)
-    p.drawString(100 if logo_url else 50, height - 55, f"{company_name} - Account Audit Report")
+    p.drawString(100 if logo_url else 50, height - 55, f"{company_name} - Account Audit")
     
-    # Account info
     y = height - 140
     p.setFillColor(HexColor("#000000"))
     p.setFont("Helvetica-Bold", 16)
     p.drawString(50, y, f"@{audit['username']}")
     y -= 30
     
-    # Scores
     p.setFont("Helvetica", 12)
     p.drawString(50, y, f"Engagement Score: {audit['engagement_score']}/100")
     y -= 20
@@ -1216,12 +1488,8 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
     if audit.get('estimated_followers'):
         y -= 20
         p.drawString(50, y, f"Estimated Followers: {audit['estimated_followers']:,}")
-    if audit.get('estimated_engagement_rate'):
-        y -= 20
-        p.drawString(50, y, f"Estimated Engagement Rate: {audit['estimated_engagement_rate']:.1f}%")
     y -= 40
     
-    # Mistakes
     p.setFont("Helvetica-Bold", 14)
     p.drawString(50, y, "Growth Mistakes:")
     y -= 20
@@ -1231,7 +1499,6 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
         y -= 18
     y -= 20
     
-    # Recommendations
     p.setFont("Helvetica-Bold", 14)
     p.drawString(50, y, "Recommendations:")
     y -= 20
@@ -1240,7 +1507,6 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
         p.drawString(60, y, f"• {rec[:80]}")
         y -= 18
     
-    # Footer
     p.setFont("Helvetica", 9)
     p.setFillColor(HexColor("#666666"))
     p.drawString(50, 30, f"Generated by {company_name} | {datetime.now().strftime('%Y-%m-%d')}")
@@ -1251,7 +1517,7 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=audit_{audit['username']}_{audit_id}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=audit_{audit['username']}.pdf"}
     )
 
 # ==================== CONTENT ENGINE ROUTES ====================
@@ -1271,15 +1537,13 @@ async def generate_content(data: ContentRequest, user: User = Depends(get_curren
     topic = data.topic or "trending topics"
     
     prompts = {
-        "reels": f"Generate 5 viral Instagram Reel ideas for the {niche} niche about {topic}. Each idea should have: title, concept, hook, and trending audio suggestion. Return as JSON array.",
-        "hooks": f"Generate 7 scroll-stopping hooks (first 3 seconds scripts) for Instagram Reels in the {niche} niche about {topic}. These should grab attention immediately. Return as JSON array of strings.",
-        "captions": f"Generate 5 engaging Instagram captions for the {niche} niche about {topic}. Include emojis, call-to-actions, and encourage saves/shares. Return as JSON array of strings.",
-        "hashtags": f"Generate 30 relevant Instagram hashtags for the {niche} niche about {topic}. Mix of high, medium, and low competition. Return as JSON array of strings."
+        "reels": f"Generate 5 viral Reel ideas for {niche} about {topic}. Include title, concept, hook, audio suggestion. Return JSON array.",
+        "hooks": f"Generate 7 scroll-stopping hooks for {niche} about {topic}. Return JSON array of strings.",
+        "captions": f"Generate 5 engaging captions for {niche} about {topic}. Include emojis, CTAs. Return JSON array of strings.",
+        "hashtags": f"Generate 30 hashtags for {niche} about {topic}. Mix competition levels. Return JSON array of strings."
     }
     
-    system_message = """You are an Instagram content strategist. Generate viral, engaging content.
-    Return ONLY a valid JSON array of items. No explanations, just the JSON array."""
-    
+    system_message = "You are an Instagram content strategist. Return ONLY valid JSON array."
     prompt = prompts.get(data.content_type, prompts["captions"])
     
     try:
@@ -1299,10 +1563,10 @@ async def generate_content(data: ContentRequest, user: User = Depends(get_curren
     except Exception as e:
         logger.error(f"AI Content Error: {e}")
         fallback = {
-            "reels": ["Day in the life Reel", "Behind the scenes", "Tutorial style", "Before/After transformation", "Trending audio dance"],
-            "hooks": ["Wait until you see this...", "POV: You just discovered...", "This changed everything for me", "Stop scrolling if you...", "The secret nobody tells you about..."],
-            "captions": ["Ready to level up? Here's how... 🚀", "Save this for later! 📌", "Comment YES if you agree! 💬", "Tag someone who needs to see this 👇", "Double tap if this resonates ❤️"],
-            "hashtags": ["#instagramgrowth", "#contentcreator", "#reelsinstagram", "#viralreels", "#growthhacks", "#socialmedia", "#instagramtips"]
+            "reels": ["Day in the life", "Behind the scenes", "Tutorial", "Transformation", "Trending dance"],
+            "hooks": ["Wait until you see...", "POV: You discovered...", "This changed everything", "Stop scrolling if...", "Secret nobody tells..."],
+            "captions": ["Ready to level up? 🚀", "Save this! 📌", "Comment YES! 💬", "Tag someone 👇", "Double tap ❤️"],
+            "hashtags": ["#instagramgrowth", "#contentcreator", "#reels", "#viral", "#growthhacks"]
         }
         content_list = fallback.get(data.content_type, fallback["captions"])
     
@@ -1315,6 +1579,7 @@ async def generate_content(data: ContentRequest, user: User = Depends(get_curren
         "user_id": user.user_id,
         "content_type": data.content_type,
         "content": content_list,
+        "is_favorite": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.content_items.insert_one(content_doc)
@@ -1322,15 +1587,247 @@ async def generate_content(data: ContentRequest, user: User = Depends(get_curren
     return ContentItem(**content_doc)
 
 @api_router.get("/content", response_model=List[ContentItem])
-async def get_content(account_id: Optional[str] = None, content_type: Optional[str] = None, user: User = Depends(get_current_user)):
+async def get_content(account_id: Optional[str] = None, content_type: Optional[str] = None, favorites_only: bool = False, user: User = Depends(get_current_user)):
     query = {"user_id": user.user_id}
     if account_id:
         query["account_id"] = account_id
     if content_type:
         query["content_type"] = content_type
+    if favorites_only:
+        query["is_favorite"] = True
     
     items = await db.content_items.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return [ContentItem(**item) for item in items]
+
+@api_router.put("/content/{content_id}/favorite")
+async def toggle_favorite(content_id: str, user: User = Depends(get_current_user)):
+    """Toggle favorite status of content"""
+    content = await db.content_items.find_one({"content_id": content_id, "user_id": user.user_id}, {"_id": 0})
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+    
+    new_status = not content.get("is_favorite", False)
+    await db.content_items.update_one(
+        {"content_id": content_id},
+        {"$set": {"is_favorite": new_status}}
+    )
+    
+    return {"is_favorite": new_status}
+
+# ==================== DM TEMPLATE ROUTES ====================
+
+@api_router.post("/dm-templates", response_model=DMTemplate)
+async def create_dm_template(data: DMTemplateCreate, user: User = Depends(get_current_user)):
+    template_id = f"template_{uuid.uuid4().hex[:12]}"
+    
+    # Extract variables from message (e.g., {{name}}, {{product}})
+    import re
+    variables = re.findall(r'\{\{(\w+)\}\}', data.message)
+    
+    template_doc = {
+        "template_id": template_id,
+        "user_id": user.user_id,
+        "name": data.name,
+        "category": data.category,
+        "message": data.message,
+        "variables": variables or data.variables or [],
+        "use_count": 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.dm_templates.insert_one(template_doc)
+    return DMTemplate(**template_doc)
+
+@api_router.get("/dm-templates")
+async def get_dm_templates(category: Optional[str] = None, user: User = Depends(get_current_user)):
+    query = {"user_id": user.user_id}
+    if category:
+        query["category"] = category
+    
+    templates = await db.dm_templates.find(query, {"_id": 0}).to_list(100)
+    return templates
+
+@api_router.put("/dm-templates/{template_id}")
+async def update_dm_template(template_id: str, data: DMTemplateCreate, user: User = Depends(get_current_user)):
+    import re
+    variables = re.findall(r'\{\{(\w+)\}\}', data.message)
+    
+    result = await db.dm_templates.update_one(
+        {"template_id": template_id, "user_id": user.user_id},
+        {"$set": {
+            "name": data.name,
+            "category": data.category,
+            "message": data.message,
+            "variables": variables or data.variables or []
+        }}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    return {"message": "Template updated"}
+
+@api_router.delete("/dm-templates/{template_id}")
+async def delete_dm_template(template_id: str, user: User = Depends(get_current_user)):
+    result = await db.dm_templates.delete_one({"template_id": template_id, "user_id": user.user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"message": "Template deleted"}
+
+@api_router.post("/dm-templates/{template_id}/generate-reply")
+async def generate_dm_reply_from_template(template_id: str, message: str, user: User = Depends(get_current_user)):
+    """Generate AI-powered DM reply based on template"""
+    await check_ai_usage(user)
+    
+    template = await db.dm_templates.find_one({"template_id": template_id, "user_id": user.user_id}, {"_id": 0})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    context = f"Template category: {template['category']}. Base message style: {template['message'][:100]}"
+    reply = await generate_dm_reply(message, context)
+    
+    # Increment template use count
+    await db.dm_templates.update_one(
+        {"template_id": template_id},
+        {"$inc": {"use_count": 1}}
+    )
+    
+    await increment_ai_usage(user.user_id)
+    
+    return {"reply": reply}
+
+# ==================== COMPETITOR ANALYSIS ROUTES ====================
+
+@api_router.post("/competitor-analysis")
+async def create_competitor_analysis(data: CompetitorAnalysisRequest, user: User = Depends(get_current_user)):
+    """Analyze competitors for an account"""
+    await check_ai_usage(user)
+    
+    account = await db.instagram_accounts.find_one(
+        {"account_id": data.account_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    
+    # Analyze each competitor
+    competitors_data = []
+    for username in data.competitor_usernames[:5]:  # Limit to 5 competitors
+        analysis = await analyze_competitor(username, account["niche"])
+        analysis["username"] = username
+        competitors_data.append(analysis)
+    
+    # Generate overall insights
+    system_message = """Based on competitor analysis, provide strategic insights. Return JSON:
+    - insights (array of 5 key observations)
+    - opportunities (array of 3-5 growth opportunities)"""
+    
+    prompt = f"Summarize insights from these competitors: {competitors_data}"
+    
+    try:
+        ai_response = await generate_ai_content(prompt, system_message)
+        import json
+        cleaned = ai_response.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        summary = json.loads(cleaned.strip())
+    except:
+        summary = {
+            "insights": ["Competitors post consistently", "Reels perform best", "Engagement is key"],
+            "opportunities": ["Underserved content topics", "Better hashtag strategy", "More story engagement"]
+        }
+    
+    await increment_ai_usage(user.user_id)
+    
+    analysis_id = f"comp_{uuid.uuid4().hex[:12]}"
+    analysis_doc = {
+        "analysis_id": analysis_id,
+        "account_id": data.account_id,
+        "user_id": user.user_id,
+        "competitors": competitors_data,
+        "insights": summary.get("insights", []),
+        "opportunities": summary.get("opportunities", []),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.competitor_analyses.insert_one(analysis_doc)
+    
+    return CompetitorAnalysis(**analysis_doc)
+
+@api_router.get("/competitor-analysis")
+async def get_competitor_analyses(account_id: Optional[str] = None, user: User = Depends(get_current_user)):
+    query = {"user_id": user.user_id}
+    if account_id:
+        query["account_id"] = account_id
+    
+    analyses = await db.competitor_analyses.find(query, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return analyses
+
+# ==================== A/B TEST ROUTES ====================
+
+@api_router.post("/ab-tests")
+async def create_ab_test(data: ABTestCreate, user: User = Depends(get_current_user)):
+    """Create an A/B test for content"""
+    test_id = f"test_{uuid.uuid4().hex[:12]}"
+    test_doc = {
+        "test_id": test_id,
+        "account_id": data.account_id,
+        "user_id": user.user_id,
+        "content_type": data.content_type,
+        "variant_a": data.variant_a,
+        "variant_b": data.variant_b,
+        "votes_a": 0,
+        "votes_b": 0,
+        "winner": None,
+        "status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.ab_tests.insert_one(test_doc)
+    return ABTest(**test_doc)
+
+@api_router.get("/ab-tests")
+async def get_ab_tests(account_id: Optional[str] = None, status: Optional[str] = None, user: User = Depends(get_current_user)):
+    query = {"user_id": user.user_id}
+    if account_id:
+        query["account_id"] = account_id
+    if status:
+        query["status"] = status
+    
+    tests = await db.ab_tests.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return tests
+
+@api_router.post("/ab-tests/{test_id}/vote")
+async def vote_ab_test(test_id: str, variant: str, user: User = Depends(get_current_user)):
+    """Vote for a variant in A/B test"""
+    if variant not in ["a", "b"]:
+        raise HTTPException(status_code=400, detail="Invalid variant. Use 'a' or 'b'")
+    
+    test = await db.ab_tests.find_one({"test_id": test_id, "user_id": user.user_id}, {"_id": 0})
+    if not test:
+        raise HTTPException(status_code=404, detail="Test not found")
+    
+    if test["status"] != "active":
+        raise HTTPException(status_code=400, detail="Test is no longer active")
+    
+    field = f"votes_{variant}"
+    await db.ab_tests.update_one(
+        {"test_id": test_id},
+        {"$inc": {field: 1}}
+    )
+    
+    # Check if we should determine winner (e.g., after 10 total votes)
+    updated = await db.ab_tests.find_one({"test_id": test_id}, {"_id": 0})
+    total_votes = updated["votes_a"] + updated["votes_b"]
+    
+    if total_votes >= 10:
+        winner = "a" if updated["votes_a"] > updated["votes_b"] else "b" if updated["votes_b"] > updated["votes_a"] else "tie"
+        await db.ab_tests.update_one(
+            {"test_id": test_id},
+            {"$set": {"status": "completed", "winner": winner}}
+        )
+    
+    return {"message": "Vote recorded", "votes_a": updated["votes_a"], "votes_b": updated["votes_b"]}
 
 # ==================== GROWTH PLANNER ROUTES ====================
 
@@ -1347,18 +1844,10 @@ async def create_growth_plan(data: GrowthPlanRequest, user: User = Depends(get_c
     
     niche = data.niche or account.get("niche", "general")
     
-    system_message = """You are an Instagram growth strategist. Create actionable daily plans.
-    Return a JSON object with 'daily_tasks' array. Each task has: day (1-30), title, description, type (post/engage/analyze/learn), and priority (high/medium/low).
-    Focus on consistency, engagement, and content quality."""
+    system_message = """Create actionable daily growth plan. Return JSON with 'daily_tasks' array.
+    Each task: day (int), title (string), description (string), type (post/engage/analyze/learn), priority (high/medium/low)."""
     
-    prompt = f"""Create a {data.duration}-day Instagram growth plan for the {niche} niche.
-    Include daily tasks for:
-    - Content creation and posting
-    - Engagement activities
-    - Analytics review
-    - Strategy refinement
-    
-    Make it actionable and specific to the {niche} niche."""
+    prompt = f"Create {data.duration}-day Instagram growth plan for {niche} niche."
     
     try:
         ai_response = await generate_ai_content(prompt, system_message)
@@ -1381,7 +1870,7 @@ async def create_growth_plan(data: GrowthPlanRequest, user: User = Depends(get_c
             daily_tasks.append({
                 "day": day,
                 "title": f"Day {day}: {task_type.capitalize()} Focus",
-                "description": f"Focus on {task_type} activities for your {niche} account",
+                "description": f"Focus on {task_type} activities",
                 "type": task_type,
                 "priority": "high" if day <= 7 else "medium"
             })
@@ -1412,67 +1901,47 @@ async def get_growth_plans(account_id: Optional[str] = None, user: User = Depend
 
 @api_router.get("/growth-plans/{plan_id}", response_model=GrowthPlan)
 async def get_growth_plan(plan_id: str, user: User = Depends(get_current_user)):
-    plan = await db.growth_plans.find_one(
-        {"plan_id": plan_id, "user_id": user.user_id},
-        {"_id": 0}
-    )
+    plan = await db.growth_plans.find_one({"plan_id": plan_id, "user_id": user.user_id}, {"_id": 0})
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     return GrowthPlan(**plan)
 
 @api_router.get("/growth-plans/{plan_id}/pdf")
 async def get_growth_plan_pdf(plan_id: str, user: User = Depends(get_current_user)):
-    plan = await db.growth_plans.find_one(
-        {"plan_id": plan_id, "user_id": user.user_id},
-        {"_id": 0}
-    )
+    plan = await db.growth_plans.find_one({"plan_id": plan_id, "user_id": user.user_id}, {"_id": 0})
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     
     if user.role == "starter":
         raise HTTPException(status_code=403, detail="PDF export requires Pro plan or higher")
     
-    # Get white-label settings
     team = None
     if user.team_id:
         team = await db.teams.find_one({"team_id": user.team_id}, {"_id": 0})
     
     brand_color = team.get("brand_color", "#6366F1") if team else "#6366F1"
     company_name = team.get("name", "InstaGrowth OS") if team else "InstaGrowth OS"
-    logo_url = team.get("logo_url") if team else None
     
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
-    # Header
     p.setFillColor(HexColor(brand_color))
     p.rect(0, height - 100, width, 100, fill=True)
-    
-    if logo_url and logo_url.startswith("data:"):
-        try:
-            logo_data = logo_url.split(",")[1]
-            logo_bytes = base64.b64decode(logo_data)
-            logo_img = ImageReader(BytesIO(logo_bytes))
-            p.drawImage(logo_img, 30, height - 80, width=50, height=50, preserveAspectRatio=True)
-        except:
-            pass
-    
     p.setFillColor(HexColor("#FFFFFF"))
     p.setFont("Helvetica-Bold", 20)
-    p.drawString(100 if logo_url else 50, height - 55, f"{plan['duration']}-Day Growth Plan")
+    p.drawString(50, height - 55, f"{plan['duration']}-Day Growth Plan")
     
     y = height - 140
     p.setFillColor(HexColor("#000000"))
     
-    for task in plan.get("daily_tasks", [])[:15]:
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(50, y, f"Day {task.get('day', '?')}: {task.get('title', 'Task')[:50]}")
+    for task in plan.get("daily_tasks", [])[:20]:
+        p.setFont("Helvetica-Bold", 11)
+        p.drawString(50, y, f"Day {task.get('day')}: {task.get('title', '')[:50]}")
         y -= 15
         p.setFont("Helvetica", 10)
-        desc = task.get('description', '')[:100]
-        p.drawString(60, y, desc)
-        y -= 25
+        p.drawString(60, y, task.get('description', '')[:80])
+        y -= 22
         
         if y < 50:
             p.showPage()
@@ -1480,7 +1949,7 @@ async def get_growth_plan_pdf(plan_id: str, user: User = Depends(get_current_use
     
     p.setFont("Helvetica", 9)
     p.setFillColor(HexColor("#666666"))
-    p.drawString(50, 30, f"Generated by {company_name} | {datetime.now().strftime('%Y-%m-%d')}")
+    p.drawString(50, 30, f"Generated by {company_name}")
     
     p.save()
     buffer.seek(0)
@@ -1489,6 +1958,208 @@ async def get_growth_plan_pdf(plan_id: str, user: User = Depends(get_current_use
         content=buffer.getvalue(),
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=growth_plan_{plan_id}.pdf"}
+    )
+
+# ==================== ONE-TIME PRODUCTS ROUTES ====================
+
+ONE_TIME_PRODUCTS = {
+    "recovery_report": {
+        "product_id": "recovery_report",
+        "name": "Instagram Recovery Report",
+        "description": "Detailed analysis and recovery roadmap for struggling accounts",
+        "price": 9.0,
+        "type": "recovery_report"
+    },
+    "content_pack": {
+        "product_id": "content_pack",
+        "name": "30-Day Viral Content Pack",
+        "description": "30 days of ready-to-post content ideas, hooks, and captions",
+        "price": 19.0,
+        "type": "content_pack"
+    },
+    "audit_pdf": {
+        "product_id": "audit_pdf",
+        "name": "Premium Account Audit PDF",
+        "description": "Comprehensive audit report with detailed recommendations",
+        "price": 15.0,
+        "type": "audit_pdf"
+    },
+    "extra_account": {
+        "product_id": "extra_account",
+        "name": "Extra Instagram Account Slot",
+        "description": "Add one more Instagram account to your plan",
+        "price": 5.0,
+        "type": "extra_account"
+    }
+}
+
+@api_router.get("/products")
+async def get_products():
+    return list(ONE_TIME_PRODUCTS.values())
+
+@api_router.post("/products/{product_id}/purchase")
+async def purchase_product(product_id: str, request: Request, user: User = Depends(get_current_user)):
+    if product_id not in ONE_TIME_PRODUCTS:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    product = ONE_TIME_PRODUCTS[product_id]
+    
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+    
+    host_url = str(request.base_url).rstrip("/")
+    origin_url = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    
+    checkout_request = CheckoutSessionRequest(
+        amount=product["price"],
+        currency="usd",
+        success_url=f"{origin_url}/billing?product_session={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{origin_url}/billing",
+        metadata={
+            "user_id": user.user_id,
+            "product_id": product_id,
+            "product_type": product["type"]
+        }
+    )
+    
+    session = await stripe_checkout.create_checkout_session(checkout_request)
+    
+    purchase_doc = {
+        "purchase_id": f"purch_{uuid.uuid4().hex[:12]}",
+        "user_id": user.user_id,
+        "product_id": product_id,
+        "session_id": session.session_id,
+        "amount": product["price"],
+        "status": "pending",
+        "data": None,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.product_purchases.insert_one(purchase_doc)
+    
+    return {"url": session.url, "session_id": session.session_id}
+
+@api_router.get("/products/purchase-status/{session_id}")
+async def get_product_purchase_status(session_id: str, user: User = Depends(get_current_user)):
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
+    status = await stripe_checkout.get_checkout_status(session_id)
+    
+    if status.payment_status == "paid":
+        purchase = await db.product_purchases.find_one({"session_id": session_id}, {"_id": 0})
+        if purchase and purchase.get("status") != "completed":
+            # Process the purchase
+            product_id = purchase["product_id"]
+            
+            if product_id == "extra_account":
+                # Add extra account slot
+                await db.users.update_one(
+                    {"user_id": user.user_id},
+                    {"$inc": {"extra_accounts": 1}}
+                )
+            
+            await db.product_purchases.update_one(
+                {"session_id": session_id},
+                {"$set": {"status": "completed"}}
+            )
+            
+            await create_notification(
+                user.user_id, "system",
+                "Purchase Complete!",
+                f"Your purchase of {ONE_TIME_PRODUCTS[product_id]['name']} is complete.",
+                "/billing"
+            )
+    
+    return {"status": status.status, "payment_status": status.payment_status}
+
+@api_router.get("/products/purchases")
+async def get_user_purchases(user: User = Depends(get_current_user)):
+    purchases = await db.product_purchases.find(
+        {"user_id": user.user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return purchases
+
+# ==================== EXPORT ROUTES ====================
+
+@api_router.get("/export/accounts")
+async def export_accounts_csv(user: User = Depends(get_current_user)):
+    """Export accounts to CSV"""
+    accounts = await db.instagram_accounts.find({"user_id": user.user_id}, {"_id": 0}).to_list(100)
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Username", "Niche", "Followers", "Engagement Rate", "Reach", "Notes", "Client Name", "Created At"])
+    
+    for acc in accounts:
+        writer.writerow([
+            acc.get("username", ""),
+            acc.get("niche", ""),
+            acc.get("follower_count", ""),
+            acc.get("engagement_rate", ""),
+            acc.get("estimated_reach", ""),
+            acc.get("notes", ""),
+            acc.get("client_name", ""),
+            acc.get("created_at", "")
+        ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=accounts.csv"}
+    )
+
+@api_router.get("/export/audits")
+async def export_audits_csv(user: User = Depends(get_current_user)):
+    """Export audits to CSV"""
+    audits = await db.audits.find({"user_id": user.user_id}, {"_id": 0}).to_list(100)
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Username", "Engagement Score", "Shadowban Risk", "Content Consistency", "Followers", "Created At"])
+    
+    for audit in audits:
+        writer.writerow([
+            audit.get("username", ""),
+            audit.get("engagement_score", ""),
+            audit.get("shadowban_risk", ""),
+            audit.get("content_consistency", ""),
+            audit.get("estimated_followers", ""),
+            audit.get("created_at", "")
+        ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=audits.csv"}
+    )
+
+@api_router.get("/export/content")
+async def export_content_csv(user: User = Depends(get_current_user)):
+    """Export content to CSV"""
+    content = await db.content_items.find({"user_id": user.user_id}, {"_id": 0}).to_list(500)
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Content Type", "Content", "Is Favorite", "Created At"])
+    
+    for item in content:
+        for c in item.get("content", []):
+            writer.writerow([
+                item.get("content_type", ""),
+                c,
+                item.get("is_favorite", False),
+                item.get("created_at", "")
+            ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=content.csv"}
     )
 
 # ==================== SUBSCRIPTION & PAYMENT ROUTES ====================
@@ -1502,10 +2173,7 @@ SUBSCRIPTION_PLANS = {
 
 @api_router.get("/plans")
 async def get_plans():
-    plans = []
-    for plan_id, plan in SUBSCRIPTION_PLANS.items():
-        plans.append({"plan_id": plan_id, **plan})
-    return plans
+    return [{"plan_id": k, **v} for k, v in SUBSCRIPTION_PLANS.items()]
 
 @api_router.post("/checkout/session")
 async def create_checkout_session(request: Request, user: User = Depends(get_current_user)):
@@ -1521,28 +2189,19 @@ async def create_checkout_session(request: Request, user: User = Depends(get_cur
     from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
     
     host_url = str(request.base_url).rstrip("/")
-    webhook_url = f"{host_url}/api/webhook/stripe"
-    
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
-    
-    success_url = f"{origin_url}/billing?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{origin_url}/billing"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
     
     checkout_request = CheckoutSessionRequest(
         amount=plan["price"],
         currency="usd",
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={
-            "user_id": user.user_id,
-            "plan_id": plan_id,
-            "plan_name": plan["name"]
-        }
+        success_url=f"{origin_url}/billing?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{origin_url}/billing",
+        metadata={"user_id": user.user_id, "plan_id": plan_id}
     )
     
     session = await stripe_checkout.create_checkout_session(checkout_request)
     
-    transaction_doc = {
+    await db.payment_transactions.insert_one({
         "transaction_id": f"txn_{uuid.uuid4().hex[:12]}",
         "user_id": user.user_id,
         "session_id": session.session_id,
@@ -1550,10 +2209,8 @@ async def create_checkout_session(request: Request, user: User = Depends(get_cur
         "amount": plan["price"],
         "currency": "usd",
         "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": None
-    }
-    await db.payment_transactions.insert_one(transaction_doc)
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
     
     return {"url": session.url, "session_id": session.session_id}
 
@@ -1586,13 +2243,15 @@ async def get_checkout_status(session_id: str, user: User = Depends(get_current_
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )
+                
+                await create_notification(
+                    user.user_id, "plan_upgrade",
+                    f"Upgraded to {plan['name']}!",
+                    f"Your account now has {plan['account_limit']} accounts and {plan['ai_usage_limit']} AI generations.",
+                    "/dashboard"
+                )
     
-    return {
-        "status": status.status,
-        "payment_status": status.payment_status,
-        "amount_total": status.amount_total,
-        "currency": status.currency
-    }
+    return {"status": status.status, "payment_status": status.payment_status, "amount_total": status.amount_total}
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
@@ -1600,46 +2259,56 @@ async def stripe_webhook(request: Request):
     
     body = await request.body()
     signature = request.headers.get("Stripe-Signature")
-    
     host_url = str(request.base_url).rstrip("/")
-    webhook_url = f"{host_url}/api/webhook/stripe"
     
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
     
     try:
         webhook_response = await stripe_checkout.handle_webhook(body, signature)
         
         if webhook_response.payment_status == "paid":
             session_id = webhook_response.session_id
-            txn = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
             
+            # Check for subscription payment
+            txn = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
             if txn and txn.get("status") != "completed":
                 await db.payment_transactions.update_one(
                     {"session_id": session_id},
                     {"$set": {"status": "completed", "updated_at": datetime.now(timezone.utc).isoformat()}}
                 )
                 
-                user_id = txn.get("user_id")
                 plan_id = txn.get("plan_id")
-                
                 if plan_id in SUBSCRIPTION_PLANS:
                     plan = SUBSCRIPTION_PLANS[plan_id]
                     await db.users.update_one(
-                        {"user_id": user_id},
+                        {"user_id": txn["user_id"]},
                         {"$set": {
                             "role": plan_id,
                             "plan_id": plan_id,
                             "account_limit": plan["account_limit"],
                             "ai_usage_limit": plan["ai_usage_limit"],
-                            "ai_usage_current": 0,
-                            "updated_at": datetime.now(timezone.utc).isoformat()
+                            "ai_usage_current": 0
                         }}
                     )
+            
+            # Check for product purchase
+            purchase = await db.product_purchases.find_one({"session_id": session_id}, {"_id": 0})
+            if purchase and purchase.get("status") != "completed":
+                if purchase["product_id"] == "extra_account":
+                    await db.users.update_one(
+                        {"user_id": purchase["user_id"]},
+                        {"$inc": {"extra_accounts": 1}}
+                    )
+                
+                await db.product_purchases.update_one(
+                    {"session_id": session_id},
+                    {"$set": {"status": "completed"}}
+                )
         
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Webhook error: {e}")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error"}
 
 # ==================== ADMIN ROUTES ====================
 
@@ -1664,12 +2333,19 @@ async def admin_get_stats(admin: User = Depends(require_admin)):
         {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
     ]).to_list(1)
     
+    product_revenue = await db.product_purchases.aggregate([
+        {"$match": {"status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ]).to_list(1)
+    
     return {
         "total_users": total_users,
         "total_accounts": total_accounts,
         "total_audits": total_audits,
         "total_teams": total_teams,
-        "total_revenue": total_revenue[0]["total"] if total_revenue else 0,
+        "subscription_revenue": total_revenue[0]["total"] if total_revenue else 0,
+        "product_revenue": product_revenue[0]["total"] if product_revenue else 0,
+        "total_revenue": (total_revenue[0]["total"] if total_revenue else 0) + (product_revenue[0]["total"] if product_revenue else 0),
         "users_by_plan": await db.users.aggregate([
             {"$group": {"_id": "$role", "count": {"$sum": 1}}}
         ]).to_list(10)
@@ -1706,27 +2382,32 @@ async def get_dashboard_stats(user: User = Depends(get_current_user)):
     audits = await db.audits.count_documents({"user_id": user.user_id})
     content_items = await db.content_items.count_documents({"user_id": user.user_id})
     growth_plans = await db.growth_plans.count_documents({"user_id": user.user_id})
+    favorites = await db.content_items.count_documents({"user_id": user.user_id, "is_favorite": True})
     
     recent_audits = await db.audits.find(
         {"user_id": user.user_id},
         {"_id": 0, "engagement_score": 1, "content_consistency": 1, "created_at": 1, "username": 1}
     ).sort("created_at", -1).limit(10).to_list(10)
     
+    unread_notifications = await db.notifications.count_documents({"user_id": user.user_id, "read": False})
+    
     return {
         "accounts_count": accounts,
         "audits_count": audits,
         "content_items_count": content_items,
         "growth_plans_count": growth_plans,
+        "favorites_count": favorites,
         "ai_usage": {"current": user.ai_usage_current, "limit": user.ai_usage_limit},
-        "account_usage": {"current": accounts, "limit": user.account_limit},
-        "recent_audits": recent_audits
+        "account_usage": {"current": accounts, "limit": user.account_limit + user.extra_accounts},
+        "recent_audits": recent_audits,
+        "unread_notifications": unread_notifications
     }
 
 # ==================== ROOT ROUTE ====================
 
 @api_router.get("/")
 async def root():
-    return {"message": "InstaGrowth OS API", "version": "1.1.0"}
+    return {"message": "InstaGrowth OS API", "version": "2.0.0"}
 
 # Include the router
 app.include_router(api_router)
