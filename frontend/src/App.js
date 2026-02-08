@@ -161,6 +161,10 @@ const ProtectedRoute = ({ children, auth }) => {
     if (location.state?.user) {
       auth.setUser(location.state.user);
       setIsAuthenticated(true);
+      // Check if onboarding needed
+      if (!location.state.user.onboarding_completed && location.pathname !== '/onboarding') {
+        navigate('/onboarding');
+      }
       return;
     }
 
@@ -173,6 +177,11 @@ const ProtectedRoute = ({ children, auth }) => {
         const user = await response.json();
         auth.setUser(user);
         setIsAuthenticated(true);
+        
+        // Redirect to onboarding if not completed (except if already on onboarding page)
+        if (!user.onboarding_completed && location.pathname !== '/onboarding') {
+          navigate('/onboarding');
+        }
       } catch (error) {
         setIsAuthenticated(false);
         navigate("/login");
