@@ -10,10 +10,11 @@ from . import ab_testing
 from . import notifications
 from . import billing
 from . import admin
+from . import admin_auth
 from . import websocket
 
 __all__ = [
     'auth', 'accounts', 'audits', 'content', 'growth',
     'teams', 'dm_templates', 'competitors', 'ab_testing',
-    'notifications', 'billing', 'admin', 'websocket'
+    'notifications', 'billing', 'admin', 'admin_auth', 'websocket'
 ]
