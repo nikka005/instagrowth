@@ -11,7 +11,7 @@ from datetime import datetime
 import time
 
 class InstaGrowthAPITester:
-    def __init__(self, base_url="https://instagrowth-os.preview.emergentagent.com"):
+    def __init__(self, base_url="https://growth-saas-app.preview.emergentagent.com"):
         self.base_url = base_url
         self.session = requests.Session()
         self.token = None

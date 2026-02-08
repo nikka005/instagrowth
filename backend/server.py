@@ -678,7 +678,7 @@ async def register(data: UserCreate, request: Request):
     }
     await db.users.insert_one(user_doc)
     
-    origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://growth-saas-app.preview.emergentagent.com")
     verify_url = f"{origin}/verify-email?token={verification_token}"
     
     email_html = f"""
@@ -730,7 +730,7 @@ async def resend_verification(request: Request, user: User = Depends(get_current
         {"$set": {"verification_token": verification_token}}
     )
     
-    origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://growth-saas-app.preview.emergentagent.com")
     verify_url = f"{origin}/verify-email?token={verification_token}"
     
     email_html = f"""
@@ -769,7 +769,7 @@ async def forgot_password(data: PasswordResetRequest, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://growth-saas-app.preview.emergentagent.com")
     reset_url = f"{origin}/reset-password?token={reset_token}"
     
     email_html = f"""
@@ -1053,7 +1053,7 @@ async def invite_team_member(team_id: str, data: TeamInvite, request: Request, u
             f"/accept-invite?token={invite_token}"
         )
     
-    origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://growth-saas-app.preview.emergentagent.com")
     invite_url = f"{origin}/accept-invite?token={invite_token}"
     
     email_html = f"""
@@ -2007,7 +2007,7 @@ async def purchase_product(product_id: str, request: Request, user: User = Depen
     from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
     
     host_url = str(request.base_url).rstrip("/")
-    origin_url = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    origin_url = request.headers.get("origin", "https://growth-saas-app.preview.emergentagent.com")
     
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
     
