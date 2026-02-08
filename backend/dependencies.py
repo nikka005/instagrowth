@@ -69,22 +69,50 @@ async def check_account_limit(user, db):
     if count >= total_limit:
         raise HTTPException(status_code=403, detail=f"Account limit reached ({total_limit}). Upgrade your plan or purchase extra accounts.")
 
-async def check_ai_usage(user, db):
-    """Check if user has AI usage available"""
+async def check_ai_usage(user, db, feature: str = "content"):
+    """Check if user has AI credits available"""
     from utils import check_rate_limit
+    from credits import use_credits, get_user_credits, CREDIT_COSTS
     
-    if user.ai_usage_current >= user.ai_usage_limit:
-        raise HTTPException(status_code=403, detail=f"AI usage limit reached ({user.ai_usage_limit}). Upgrade your plan.")
-    
+    # Check rate limit first
     if not check_rate_limit(user.user_id):
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Please wait before making more AI requests.")
+    
+    # Get user's credits
+    credits = await get_user_credits(user.user_id)
+    cost = CREDIT_COSTS.get(feature, 1)
+    
+    if credits["remaining_credits"] < cost:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Insufficient AI credits. You have {credits['remaining_credits']} credits but this action costs {cost}. Upgrade your plan or purchase more credits."
+        )
 
-async def increment_ai_usage(user_id: str, db):
-    """Increment user's AI usage counter"""
+async def use_ai_credits(user_id: str, db, feature: str = "content"):
+    """Deduct credits for AI feature usage"""
+    from credits import use_credits
+    
+    success, result = await use_credits(user_id, feature)
+    
+    if not success:
+        raise HTTPException(status_code=402, detail=result.get("error", "Insufficient credits"))
+    
+    return result
+
+async def increment_ai_usage(user_id: str, db, feature: str = "content"):
+    """Increment user's AI usage counter and deduct credits"""
+    from credits import use_credits
+    
+    # Deduct credits
+    success, result = await use_credits(user_id, feature)
+    
+    # Also update legacy AI usage counter for backwards compatibility
     await db.users.update_one(
         {"user_id": user_id},
         {"$inc": {"ai_usage_current": 1}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
     )
+    
+    return success, result
 
 async def create_notification(user_id: str, type: str, title: str, message: str, action_url: Optional[str], db):
     """Create a notification for a user"""
