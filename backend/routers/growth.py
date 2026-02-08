@@ -57,7 +57,7 @@ async def create_growth_plan(data: GrowthPlanRequest, request: Request):
                 "type": task_type, "priority": "high" if day <= 7 else "medium"
             })
     
-    await increment_ai_usage(user.user_id, db)
+    await increment_ai_usage(user.user_id, db, feature="growth_plan")
     
     plan_id = f"plan_{uuid.uuid4().hex[:12]}"
     plan_doc = {
