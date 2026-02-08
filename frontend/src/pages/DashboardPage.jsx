@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Instagram, BarChart3, Sparkles, Calendar, TrendingUp, 
-  ArrowRight, Plus, Zap, Target, AlertCircle
+  ArrowRight, Plus, Zap, Target, AlertCircle, X, Info, CheckCircle2, AlertTriangle
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
@@ -14,10 +14,14 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const DashboardPage = ({ auth }) => {
   const [stats, setStats] = useState(null);
+  const [credits, setCredits] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
+    fetchCredits();
+    fetchAnnouncements();
   }, []);
 
   const fetchStats = async () => {
@@ -33,6 +37,54 @@ const DashboardPage = ({ auth }) => {
       console.error("Failed to fetch stats:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCredits = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/credits`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCredits(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch credits:", error);
+    }
+  };
+
+  const fetchAnnouncements = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/announcements/unread`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAnnouncements(data.announcements || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch announcements:", error);
+    }
+  };
+
+  const dismissAnnouncement = async (announcementId) => {
+    try {
+      await fetch(`${API_URL}/api/announcements/${announcementId}/dismiss`, {
+        method: "POST",
+        credentials: "include",
+      });
+      setAnnouncements(prev => prev.filter(a => a.announcement_id !== announcementId));
+    } catch (error) {
+      console.error("Failed to dismiss:", error);
+    }
+  };
+
+  const getAnnouncementIcon = (type) => {
+    switch (type) {
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-yellow-400" />;
+      case 'success': return <CheckCircle2 className="w-5 h-5 text-green-400" />;
+      default: return <Info className="w-5 h-5 text-indigo-400" />;
     }
   };
 
