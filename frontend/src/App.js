@@ -172,6 +172,14 @@ function AppRouter({ auth }) {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage auth={auth} />} />
       <Route path="/register" element={<RegisterPage auth={auth} />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/accept-invite" element={
+        <ProtectedRoute auth={auth}>
+          <TeamPage auth={auth} />
+        </ProtectedRoute>
+      } />
       <Route
         path="/dashboard"
         element={
@@ -225,6 +233,14 @@ function AppRouter({ auth }) {
         element={
           <ProtectedRoute auth={auth}>
             <SettingsPage auth={auth} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/team"
+        element={
+          <ProtectedRoute auth={auth}>
+            <TeamPage auth={auth} />
           </ProtectedRoute>
         }
       />
