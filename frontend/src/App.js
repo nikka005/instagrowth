@@ -332,6 +332,14 @@ function AppRouter({ auth }) {
         }
       />
       <Route
+        path="/referrals"
+        element={
+          <ProtectedRoute auth={auth}>
+            <ReferralsPage auth={auth} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin"
         element={<AdminPage auth={auth} />}
       />
