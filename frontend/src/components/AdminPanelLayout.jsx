@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, CreditCard, Package, Instagram, 
   Cpu, DollarSign, UsersRound, Settings, FileText, LogOut,
-  Menu, X, Shield, Bell, ChevronDown
+  Menu, X, Shield, Bell, ChevronDown, User, TrendingUp, AlertTriangle
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+const WS_URL = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
 
 const AdminPanelLayout = ({ children }) => {
   const navigate = useNavigate();
