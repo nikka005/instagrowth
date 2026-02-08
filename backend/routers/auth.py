@@ -23,6 +23,9 @@ async def register(data: UserCreate, request: Request):
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     verification_token = create_verification_token()
     
+    # Check for referral code
+    referral_code = request.query_params.get("ref")
+    
     user_doc = {
         "user_id": user_id,
         "email": data.email,
@@ -38,6 +41,8 @@ async def register(data: UserCreate, request: Request):
         "verification_token": verification_token,
         "team_id": None,
         "extra_accounts": 0,
+        "referred_by": referral_code,
+        "onboarding_completed": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": None
     }
@@ -62,6 +67,24 @@ async def register(data: UserCreate, request: Request):
     """
     await send_email(data.email, "Verify your InstaGrowth OS account", email_html)
     await create_notification(user_id, "system", "Welcome to InstaGrowth OS!", "Start by adding your first Instagram account.", "/accounts", db)
+    
+    # Process referral if code provided
+    if referral_code:
+        try:
+            from routers.referrals import process_referral_signup
+            await process_referral_signup(user_id, data.email, referral_code)
+        except Exception as e:
+            pass  # Don't fail registration if referral processing fails
+    
+    # Send welcome automation email
+    try:
+        from routers.email_automation import send_automated_email
+        await send_automated_email("welcome", data.email, {
+            "name": data.name,
+            "dashboard_url": f"{origin}/dashboard"
+        })
+    except Exception:
+        pass  # Don't fail registration if welcome email fails
     
     # Notify admins of new user registration
     try:
