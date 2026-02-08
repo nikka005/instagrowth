@@ -105,6 +105,51 @@ const DashboardPage = ({ auth }) => {
   return (
     <DashboardLayout auth={auth}>
       <div className="space-y-8">
+        {/* Announcements Banner */}
+        <AnimatePresence>
+          {announcements.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-3"
+            >
+              {announcements.slice(0, 2).map((announcement) => (
+                <div
+                  key={announcement.announcement_id}
+                  className={`p-4 rounded-xl border flex items-start gap-3 ${
+                    announcement.type === 'warning' 
+                      ? 'bg-yellow-500/10 border-yellow-500/20'
+                      : announcement.type === 'success'
+                      ? 'bg-green-500/10 border-green-500/20'
+                      : 'bg-indigo-500/10 border-indigo-500/20'
+                  }`}
+                >
+                  {getAnnouncementIcon(announcement.type)}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-white">{announcement.title}</h4>
+                    <p className="text-white/60 text-sm mt-0.5">{announcement.message}</p>
+                    {announcement.link_url && (
+                      <a 
+                        href={announcement.link_url} 
+                        className="text-indigo-400 text-sm mt-2 inline-block hover:underline"
+                      >
+                        {announcement.link_text || 'Learn more'}
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => dismissAnnouncement(announcement.announcement_id)}
+                    className="p-1 text-white/40 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -151,9 +196,9 @@ const DashboardPage = ({ auth }) => {
           ))}
         </div>
 
-        {/* AI Usage & Quick Actions */}
+        {/* AI Credits & Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* AI Usage Card */}
+          {/* AI Credits Card */}
           <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border border-indigo-500/20">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
