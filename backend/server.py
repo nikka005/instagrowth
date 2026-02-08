@@ -71,6 +71,11 @@ app.include_router(admin_panel_users.router, prefix="/api")
 app.include_router(admin_panel_subscriptions.router, prefix="/api")
 app.include_router(admin_panel_dashboard.router, prefix="/api")
 
+# New feature routers
+app.include_router(instagram_api.router, prefix="/api")
+app.include_router(admin_websocket.router, prefix="/api")
+app.include_router(user_2fa.router, prefix="/api")
+
 # Root endpoint
 @app.get("/api/")
 async def root():
