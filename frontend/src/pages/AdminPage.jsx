@@ -177,28 +177,91 @@ const AdminPage = ({ auth }) => {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (auth.user?.role !== "admin") {
+  // Show loading while verifying admin session
+  if (!adminUser && loading) {
     return (
-      <DashboardLayout auth={auth}>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <Shield className="w-16 h-16 text-white/20 mx-auto mb-4" />
-            <h2 className="font-display text-2xl font-bold text-white mb-2">Access Denied</h2>
-            <p className="text-white/50">You don't have permission to access this page.</p>
-          </div>
+      <div className="min-h-screen bg-[#030305] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+          <p className="text-white/60">Verifying admin access...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
+  }
+
+  // If not admin, this will redirect via useEffect
+  if (!adminUser) {
+    return null;
   }
 
   return (
     <DashboardLayout auth={auth}>
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-white">Admin Dashboard</h1>
-          <p className="text-white/60 mt-1">Manage users and view platform statistics</p>
+        {/* Admin Header with Logout */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-red-500/20 rounded-lg">
+                <Shield className="w-6 h-6 text-red-400" />
+              </div>
+              <h1 className="font-display text-2xl md:text-3xl font-bold text-white">Admin Dashboard</h1>
+            </div>
+            <p className="text-white/60">Logged in as: <span className="text-red-400">{adminUser?.email}</span></p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={fetchLoginHistory}
+              variant="outline"
+              className="border-white/10 text-white hover:bg-white/5"
+            >
+              <History className="w-4 h-4 mr-2" />
+              Login History
+            </Button>
+            <Button
+              onClick={handleAdminLogout}
+              variant="outline"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Admin Logout
+            </Button>
+          </div>
         </div>
+
+        {/* Login History Modal */}
+        {showHistory && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-6 rounded-2xl bg-[#0F0F11]/80 border border-red-500/20"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display font-semibold text-white">Admin Login History</h3>
+              <Button
+                onClick={() => setShowHistory(false)}
+                variant="ghost"
+                size="sm"
+                className="text-white/50 hover:text-white"
+              >
+                Close
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {loginHistory.length > 0 ? (
+                loginHistory.map((entry, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span className="text-white/70">{entry.email}</span>
+                    <span className="text-white/40 text-sm">
+                      {new Date(entry.login_at).toLocaleString()}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-white/50 text-center py-4">No login history available</p>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
