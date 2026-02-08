@@ -583,7 +583,7 @@ async def generate_posting_recommendations(username: str, niche: str, current_me
     Current engagement: {current_metrics.get('estimated_engagement_rate', 'Unknown')}%"""
     
     try:
-        response = await generate_ai_content(prompt, system_message)
+        response = await generate_ai_content(prompt, system_message, timeout_seconds=AI_TIMEOUT_MEDIUM)
         import json
         cleaned = response.strip()
         if cleaned.startswith("```json"):
@@ -593,6 +593,8 @@ async def generate_posting_recommendations(username: str, niche: str, current_me
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
         return json.loads(cleaned.strip())
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Posting recommendations error: {e}")
         return {
