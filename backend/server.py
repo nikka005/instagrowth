@@ -60,6 +60,7 @@ app.include_router(ab_testing.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(admin_auth.router, prefix="/api")
 app.include_router(websocket.router, prefix="/api")
 
 # Root endpoint
