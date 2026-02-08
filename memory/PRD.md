@@ -41,6 +41,13 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - AI Usage trend
 - Users by Plan distribution (Pie chart)
 
+### Documentation (NEW)
+- Complete admin panel guide
+- How-to for all features
+- Searchable documentation
+- Quick reference cards
+- Expandable sections for each feature
+
 ### User Management
 - View all users with search/filter
 - Change user plans
