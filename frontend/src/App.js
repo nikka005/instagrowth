@@ -288,6 +288,17 @@ function AppRouter({ auth }) {
         path="/admin"
         element={<AdminPage auth={auth} />}
       />
+      
+      {/* Admin Panel Routes */}
+      <Route path="/admin-panel/login" element={<AdminPanelLoginPage />} />
+      <Route path="/admin-panel" element={<AdminPanelLayout><AdminDashboardPage /></AdminPanelLayout>} />
+      <Route path="/admin-panel/users" element={<AdminPanelLayout><AdminUsersPage /></AdminPanelLayout>} />
+      <Route path="/admin-panel/plans" element={<AdminPanelLayout><AdminPlansPage /></AdminPanelLayout>} />
+      <Route path="/admin-panel/revenue" element={<AdminPanelLayout><AdminRevenuePage /></AdminPanelLayout>} />
+      <Route path="/admin-panel/ai-usage" element={<AdminPanelLayout><AdminAIUsagePage /></AdminPanelLayout>} />
+      <Route path="/admin-panel/logs" element={<AdminPanelLayout><AdminLogsPage /></AdminPanelLayout>} />
+      <Route path="/admin-panel/settings" element={<AdminPanelLayout><AdminSystemSettingsPage /></AdminPanelLayout>} />
+      
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
