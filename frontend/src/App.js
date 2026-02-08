@@ -16,6 +16,10 @@ import GrowthPlannerPage from "./pages/GrowthPlannerPage";
 import BillingPage from "./pages/BillingPage";
 import SettingsPage from "./pages/SettingsPage";
 import AdminPage from "./pages/AdminPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import TeamPage from "./pages/TeamPage";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
