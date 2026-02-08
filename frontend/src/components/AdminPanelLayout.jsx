@@ -260,9 +260,68 @@ const AdminPanelLayout = ({ children }) => {
                   2FA Enabled
                 </span>
               )}
-              <button className="p-2 text-white/60 hover:text-white relative">
-                <Bell className="w-5 h-5" />
-              </button>
+              
+              {/* Notifications Dropdown */}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 text-white/60 hover:text-white relative"
+                >
+                  <Bell className="w-5 h-5" />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                  )}
+                </button>
+                
+                {showNotifications && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-[#1e293b] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+                    <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                      <span className="font-medium text-white">Notifications</span>
+                      {notifications.length > 0 && (
+                        <button 
+                          onClick={() => setNotifications([])}
+                          className="text-xs text-white/50 hover:text-white"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-white/50 text-sm">
+                          No notifications
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div key={notif.id} className="px-4 py-3 border-b border-white/5 hover:bg-white/5">
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2 rounded-lg ${
+                                notif.type === 'new_user' ? 'bg-green-500/20 text-green-400' :
+                                notif.type === 'new_payment' ? 'bg-blue-500/20 text-blue-400' :
+                                notif.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                                'bg-indigo-500/20 text-indigo-400'
+                              }`}>
+                                {notif.type === 'new_user' ? <User className="w-4 h-4" /> :
+                                 notif.type === 'new_payment' ? <CreditCard className="w-4 h-4" /> :
+                                 notif.type?.includes('upgrade') ? <TrendingUp className="w-4 h-4" /> :
+                                 notif.priority === 'high' ? <AlertTriangle className="w-4 h-4" /> :
+                                 <Bell className="w-4 h-4" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">{notif.title}</p>
+                                <p className="text-xs text-white/50 truncate">{notif.message}</p>
+                                <p className="text-xs text-white/30 mt-1">
+                                  {new Date(notif.timestamp).toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
