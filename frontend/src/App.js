@@ -43,6 +43,10 @@ import TermsOfServicePage from "./pages/TermsOfServicePage";
 import RefundPolicyPage from "./pages/RefundPolicyPage";
 import DataDeletionPage from "./pages/DataDeletionPage";
 
+// Support & Onboarding
+import SupportPage from "./pages/SupportPage";
+import OnboardingPage from "./pages/OnboardingPage";
+
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Auth Context
