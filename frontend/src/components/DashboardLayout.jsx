@@ -20,7 +20,7 @@ const DashboardLayout = ({ children, auth }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const navItems = [
+  const baseNavItems = [
     { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", path: "/dashboard" },
     { icon: <Instagram className="w-5 h-5" />, label: "Accounts", path: "/accounts" },
     { icon: <BarChart3 className="w-5 h-5" />, label: "AI Audit", path: "/audit" },
@@ -30,15 +30,17 @@ const DashboardLayout = ({ children, auth }) => {
     { icon: <Settings className="w-5 h-5" />, label: "Settings", path: "/settings" },
   ];
 
-  // Add team link for agency/enterprise users
-  if (auth.user?.role === "agency" || auth.user?.role === "enterprise" || auth.user?.role === "admin") {
-    navItems.splice(6, 0, { icon: <Users className="w-5 h-5" />, label: "Team", path: "/team" });
-  }
-
-  // Add admin link if user is admin
-  if (auth.user?.role === "admin") {
-    navItems.push({ icon: <Users className="w-5 h-5" />, label: "Admin", path: "/admin" });
-  }
+  // Build navigation items based on user role
+  const navItems = [
+    ...baseNavItems.slice(0, 6),
+    ...(auth.user?.role === "agency" || auth.user?.role === "enterprise" || auth.user?.role === "admin" 
+      ? [{ icon: <Users className="w-5 h-5" />, label: "Team", path: "/team" }] 
+      : []),
+    baseNavItems[6], // Settings
+    ...(auth.user?.role === "admin" 
+      ? [{ icon: <Users className="w-5 h-5" />, label: "Admin", path: "/admin" }] 
+      : [])
+  ];
 
   const handleLogout = async () => {
     await auth.logout();
