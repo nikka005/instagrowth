@@ -212,6 +212,13 @@ async def process_referral_signup(referee_id: str, referee_email: str, referral_
         {"$set": {"referrer_reward_given": True}}
     )
     
+    # Send email notification to referrer
+    try:
+        from routers.email_automation import trigger_referral_reward_email
+        await trigger_referral_reward_email(referrer_id, REFERRAL_CONFIG["referrer_reward_credits"])
+    except Exception:
+        pass  # Don't fail if email fails
+    
     return referral
 
 async def process_referral_conversion(referee_id: str, payment_amount: float):
