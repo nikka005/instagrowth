@@ -78,12 +78,14 @@ app.include_router(user_2fa.router, prefix="/api")
 app.include_router(instagram_oauth.router, prefix="/api")
 
 # Support & Announcements routers
-from routers import support, admin_tickets, announcements, credits, security_router
+from routers import support, admin_tickets, announcements, credits, security_router, referrals, email_automation
 app.include_router(support.router, prefix="/api")
 app.include_router(admin_tickets.router, prefix="/api")
 app.include_router(announcements.router, prefix="/api")
 app.include_router(credits.router, prefix="/api")
 app.include_router(security_router.router, prefix="/api")
+app.include_router(referrals.router, prefix="/api")
+app.include_router(email_automation.router, prefix="/api")
 
 # Root endpoint
 @app.get("/api/")
