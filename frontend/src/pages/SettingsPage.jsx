@@ -11,6 +11,7 @@ import { Switch } from "../components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import DashboardLayout from "../components/DashboardLayout";
+import TwoFactorSettings from "../components/TwoFactorSettings";
 import { toast } from "sonner";
 
 const SettingsPage = ({ auth }) => {
