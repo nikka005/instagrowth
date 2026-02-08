@@ -156,6 +156,7 @@ class InstaGrowthAPITester:
         success, response = self.run_test("Demo User Login", "POST", "/auth/login", 200, data)
         if success and "token" in response:
             self.log(f"   Demo user login successful: {response.get('user', {}).get('email')}")
+            self.log(f"   Demo user role: {response.get('user', {}).get('role')}")
             # Store demo token for team testing
             self.demo_token = response["token"]
             self.demo_user = response["user"]
