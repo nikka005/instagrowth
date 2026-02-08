@@ -48,6 +48,7 @@ import DataDeletionPage from "./pages/DataDeletionPage";
 import SupportPage from "./pages/SupportPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ReferralsPage from "./pages/ReferralsPage";
+import HelpCenterPage from "./pages/HelpCenterPage";
 
 // Admin Panel additional imports
 import AdminReferralsPage from "./pages/admin-panel/ReferralsPage";
