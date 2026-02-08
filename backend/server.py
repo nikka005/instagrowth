@@ -64,6 +64,12 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(admin_auth.router, prefix="/api")
 app.include_router(websocket.router, prefix="/api")
 
+# Admin Panel routers
+app.include_router(admin_panel_auth.router, prefix="/api")
+app.include_router(admin_panel_users.router, prefix="/api")
+app.include_router(admin_panel_subscriptions.router, prefix="/api")
+app.include_router(admin_panel_dashboard.router, prefix="/api")
+
 # Root endpoint
 @app.get("/api/")
 async def root():
