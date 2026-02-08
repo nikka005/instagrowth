@@ -37,6 +37,12 @@ import AdminLogsPage from "./pages/admin-panel/LogsPage";
 import AdminSystemSettingsPage from "./pages/admin-panel/SystemSettingsPage";
 import AdminDocumentationPage from "./pages/admin-panel/DocumentationPage";
 
+// Legal Pages
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsOfServicePage from "./pages/TermsOfServicePage";
+import RefundPolicyPage from "./pages/RefundPolicyPage";
+import DataDeletionPage from "./pages/DataDeletionPage";
+
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Auth Context
