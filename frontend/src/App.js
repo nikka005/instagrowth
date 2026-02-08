@@ -25,6 +25,17 @@ import DMTemplatesPage from "./pages/DMTemplatesPage";
 import CompetitorAnalysisPage from "./pages/CompetitorAnalysisPage";
 import ABTestingPage from "./pages/ABTestingPage";
 
+// Admin Panel imports
+import AdminPanelLayout from "./components/AdminPanelLayout";
+import AdminPanelLoginPage from "./pages/admin-panel/LoginPage";
+import AdminDashboardPage from "./pages/admin-panel/DashboardPage";
+import AdminUsersPage from "./pages/admin-panel/UsersPage";
+import AdminPlansPage from "./pages/admin-panel/PlansPage";
+import AdminRevenuePage from "./pages/admin-panel/RevenuePage";
+import AdminAIUsagePage from "./pages/admin-panel/AIUsagePage";
+import AdminLogsPage from "./pages/admin-panel/LogsPage";
+import AdminSystemSettingsPage from "./pages/admin-panel/SystemSettingsPage";
+
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Auth Context
