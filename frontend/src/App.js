@@ -16,6 +16,7 @@ import GrowthPlannerPage from "./pages/GrowthPlannerPage";
 import BillingPage from "./pages/BillingPage";
 import SettingsPage from "./pages/SettingsPage";
 import AdminPage from "./pages/AdminPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
