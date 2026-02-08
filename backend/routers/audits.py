@@ -21,7 +21,7 @@ router = APIRouter(prefix="/audits", tags=["AI Audits"])
 async def create_audit(data: AuditRequest, request: Request):
     db = get_database()
     user = await get_current_user(request, db)
-    await check_ai_usage(user, db)
+    await check_ai_usage(user, db, feature="audit")
     
     account = await db.instagram_accounts.find_one(
         {"account_id": data.account_id, "user_id": user.user_id}, {"_id": 0}
