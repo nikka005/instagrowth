@@ -70,7 +70,7 @@ async def delete_dm_template(template_id: str, request: Request):
 async def generate_dm_reply_from_template(template_id: str, message: str, request: Request):
     db = get_database()
     user = await get_current_user(request, db)
-    await check_ai_usage(user, db)
+    await check_ai_usage(user, db, feature="dm_reply")
     
     template = await db.dm_templates.find_one({"template_id": template_id, "user_id": user.user_id}, {"_id": 0})
     if not template:
@@ -80,6 +80,6 @@ async def generate_dm_reply_from_template(template_id: str, message: str, reques
     reply = await generate_dm_reply(message, context, "friendly")
     
     await db.dm_templates.update_one({"template_id": template_id}, {"$inc": {"use_count": 1}})
-    await increment_ai_usage(user.user_id, db)
+    await increment_ai_usage(user.user_id, db, feature="dm_reply")
     
     return {"reply": reply}
