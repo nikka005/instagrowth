@@ -26,7 +26,7 @@ from routers import (
     notifications, billing, admin, admin_auth, websocket
 )
 from routers import admin_panel_auth, admin_panel_users, admin_panel_subscriptions, admin_panel_dashboard
-from routers import instagram_api, admin_websocket, user_2fa
+from routers import instagram_api, admin_websocket, user_2fa, instagram_oauth
 from database import get_database
 
 # Configure logging
