@@ -47,6 +47,11 @@ import DataDeletionPage from "./pages/DataDeletionPage";
 // Support & Onboarding
 import SupportPage from "./pages/SupportPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import ReferralsPage from "./pages/ReferralsPage";
+
+// Admin Panel additional imports
+import AdminReferralsPage from "./pages/admin-panel/ReferralsPage";
+import AdminAnnouncementsPage from "./pages/admin-panel/AnnouncementsPage";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
