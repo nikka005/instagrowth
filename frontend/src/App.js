@@ -116,12 +116,12 @@ export const useAuth = () => {
       body: JSON.stringify({ name, email, password }),
     });
     
+    const data = await response.json();
+    
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Registration failed");
+      throw new Error(data.detail || "Registration failed");
     }
     
-    const data = await response.json();
     localStorage.setItem("token", data.token);
     setUser(data.user);
     return data;
