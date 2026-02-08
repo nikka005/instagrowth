@@ -38,11 +38,11 @@ const DashboardLayout = ({ children, auth }) => {
 
   // Build navigation items based on user role
   const navItems = [
-    ...baseNavItems.slice(0, 11),
+    ...baseNavItems.slice(0, 12),
     ...(auth.user?.role === "agency" || auth.user?.role === "enterprise" || auth.user?.role === "admin" 
       ? [{ icon: <Users className="w-5 h-5" />, label: "Team", path: "/team" }] 
       : []),
-    baseNavItems[11], // Settings
+    baseNavItems[12], // Settings
     ...(auth.user?.role === "admin" 
       ? [{ icon: <Users className="w-5 h-5" />, label: "Admin", path: "/admin" }] 
       : [])
