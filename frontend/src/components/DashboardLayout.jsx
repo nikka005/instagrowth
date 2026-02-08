@@ -26,17 +26,20 @@ const DashboardLayout = ({ children, auth }) => {
     { icon: <BarChart3 className="w-5 h-5" />, label: "AI Audit", path: "/audit" },
     { icon: <Sparkles className="w-5 h-5" />, label: "Content Engine", path: "/content" },
     { icon: <Calendar className="w-5 h-5" />, label: "Growth Planner", path: "/planner" },
+    { icon: <MessageSquare className="w-5 h-5" />, label: "DM Templates", path: "/dm-templates" },
+    { icon: <Target className="w-5 h-5" />, label: "Competitors", path: "/competitors" },
+    { icon: <FlaskConical className="w-5 h-5" />, label: "A/B Testing", path: "/ab-testing" },
     { icon: <CreditCard className="w-5 h-5" />, label: "Billing", path: "/billing" },
     { icon: <Settings className="w-5 h-5" />, label: "Settings", path: "/settings" },
   ];
 
   // Build navigation items based on user role
   const navItems = [
-    ...baseNavItems.slice(0, 6),
+    ...baseNavItems.slice(0, 9),
     ...(auth.user?.role === "agency" || auth.user?.role === "enterprise" || auth.user?.role === "admin" 
       ? [{ icon: <Users className="w-5 h-5" />, label: "Team", path: "/team" }] 
       : []),
-    baseNavItems[6], // Settings
+    baseNavItems[9], // Settings
     ...(auth.user?.role === "admin" 
       ? [{ icon: <Users className="w-5 h-5" />, label: "Admin", path: "/admin" }] 
       : [])
