@@ -390,13 +390,15 @@ async def get_system_settings(request: Request):
             "default_ai_model": "gpt-5.2"
         }
     
-    # Mask sensitive keys
-    if settings.get("openai_api_key"):
-        settings["openai_api_key"] = "***" + settings["openai_api_key"][-4:]
-    if settings.get("stripe_api_key"):
-        settings["stripe_api_key"] = "***" + settings["stripe_api_key"][-4:]
-    if settings.get("resend_api_key"):
-        settings["resend_api_key"] = "***" + settings["resend_api_key"][-4:]
+    # Mask sensitive keys - show last 4 chars
+    sensitive_keys = [
+        "openai_api_key", "stripe_secret_key", "stripe_publishable_key", 
+        "stripe_webhook_secret", "resend_api_key", "meta_app_secret", 
+        "meta_access_token"
+    ]
+    for key in sensitive_keys:
+        if settings.get(key) and len(settings[key]) > 4:
+            settings[key] = "***" + settings[key][-4:]
     
     return settings
 
@@ -406,9 +408,14 @@ async def update_system_settings(
     support_email: str = None,
     default_ai_model: str = None,
     openai_api_key: str = None,
-    stripe_api_key: str = None,
+    stripe_secret_key: str = None,
+    stripe_publishable_key: str = None,
+    stripe_webhook_secret: str = None,
     resend_api_key: str = None,
-    meta_api_key: str = None,
+    meta_app_id: str = None,
+    meta_app_secret: str = None,
+    meta_access_token: str = None,
+    instagram_business_id: str = None,
     request: Request = None
 ):
     """Update system settings"""
@@ -419,20 +426,33 @@ async def update_system_settings(
         raise HTTPException(status_code=403, detail="Super admin access required")
     
     update_data = {}
+    
+    # Non-sensitive fields
     if platform_name:
         update_data["platform_name"] = platform_name
     if support_email:
         update_data["support_email"] = support_email
     if default_ai_model:
         update_data["default_ai_model"] = default_ai_model
-    if openai_api_key and not openai_api_key.startswith("***"):
-        update_data["openai_api_key"] = openai_api_key
-    if stripe_api_key and not stripe_api_key.startswith("***"):
-        update_data["stripe_api_key"] = stripe_api_key
-    if resend_api_key and not resend_api_key.startswith("***"):
-        update_data["resend_api_key"] = resend_api_key
-    if meta_api_key and not meta_api_key.startswith("***"):
-        update_data["meta_api_key"] = meta_api_key
+    if meta_app_id:
+        update_data["meta_app_id"] = meta_app_id
+    if instagram_business_id:
+        update_data["instagram_business_id"] = instagram_business_id
+    
+    # Sensitive fields - only update if not masked
+    sensitive_fields = {
+        "openai_api_key": openai_api_key,
+        "stripe_secret_key": stripe_secret_key,
+        "stripe_publishable_key": stripe_publishable_key,
+        "stripe_webhook_secret": stripe_webhook_secret,
+        "resend_api_key": resend_api_key,
+        "meta_app_secret": meta_app_secret,
+        "meta_access_token": meta_access_token
+    }
+    
+    for field, value in sensitive_fields.items():
+        if value and not value.startswith("***"):
+            update_data[field] = value
     
     if update_data:
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -444,7 +464,99 @@ async def update_system_settings(
     
     await log_admin_action(admin, "update_settings", "system", None, {"fields_updated": list(update_data.keys())}, get_client_ip(request))
     
-    return {"message": "Settings updated"}
+    return {"message": "Settings updated successfully"}
+
+@router.post("/settings/test-connection")
+async def test_api_connection(service: str, request: Request = None):
+    """Test connection to third-party API services"""
+    import httpx
+    import os
+    
+    db = get_database()
+    admin = await verify_admin_token(request)
+    
+    if admin["role"] != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    settings = await db.system_settings.find_one({"setting_id": "global"}, {"_id": 0})
+    if not settings:
+        settings = {}
+    
+    try:
+        if service == "openai":
+            # Test OpenAI connection
+            api_key = settings.get("openai_api_key") or os.environ.get("EMERGENT_MODEL_API_KEY")
+            if not api_key:
+                return {"success": False, "message": "OpenAI API key not configured"}
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    return {"success": True, "message": "OpenAI connection successful"}
+                else:
+                    return {"success": False, "message": f"OpenAI API error: {response.status_code}"}
+        
+        elif service == "stripe":
+            # Test Stripe connection
+            api_key = settings.get("stripe_secret_key") or os.environ.get("STRIPE_SECRET_KEY")
+            if not api_key:
+                return {"success": False, "message": "Stripe secret key not configured"}
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.stripe.com/v1/balance",
+                    auth=(api_key, ""),
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    return {"success": True, "message": "Stripe connection successful"}
+                else:
+                    return {"success": False, "message": f"Stripe API error: {response.status_code}"}
+        
+        elif service == "resend":
+            # Test Resend connection
+            api_key = settings.get("resend_api_key") or os.environ.get("RESEND_API_KEY")
+            if not api_key:
+                return {"success": False, "message": "Resend API key not configured"}
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.resend.com/domains",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    return {"success": True, "message": "Resend connection successful"}
+                else:
+                    return {"success": False, "message": f"Resend API error: {response.status_code}"}
+        
+        elif service == "meta":
+            # Test Meta/Instagram API connection
+            access_token = settings.get("meta_access_token")
+            if not access_token:
+                return {"success": False, "message": "Meta access token not configured"}
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://graph.facebook.com/v18.0/me?access_token={access_token}",
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    return {"success": True, "message": "Meta API connection successful"}
+                else:
+                    data = response.json()
+                    error_msg = data.get("error", {}).get("message", f"API error: {response.status_code}")
+                    return {"success": False, "message": error_msg}
+        
+        else:
+            return {"success": False, "message": f"Unknown service: {service}"}
+    
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 # ==================== TEAM MANAGEMENT (INTERNAL ADMINS) ====================
 
