@@ -205,25 +205,28 @@ const DashboardPage = ({ auth }) => {
                 <Zap className="w-5 h-5 text-indigo-400" />
               </div>
               <div>
-                <h3 className="font-display font-semibold text-white">AI Usage</h3>
+                <h3 className="font-display font-semibold text-white">AI Credits</h3>
                 <p className="text-sm text-white/50">This month</p>
               </div>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-2xl font-display font-bold text-white">
-                  {stats?.ai_usage?.current || 0}
+                  {credits?.remaining_credits || 0}
                 </span>
-                <span className="text-white/50">/ {stats?.ai_usage?.limit || 10}</span>
+                <span className="text-white/50">/ {credits?.total_credits || 10}</span>
               </div>
               <Progress 
-                value={((stats?.ai_usage?.current || 0) / (stats?.ai_usage?.limit || 10)) * 100} 
+                value={((credits?.remaining_credits || 0) / (credits?.total_credits || 10)) * 100} 
                 className="h-2 bg-white/10" 
               />
-              {(stats?.ai_usage?.current || 0) >= (stats?.ai_usage?.limit || 10) && (
+              {credits?.extra_credits > 0 && (
+                <p className="text-xs text-green-400">+{credits.extra_credits} bonus credits</p>
+              )}
+              {(credits?.remaining_credits || 0) < 10 && (
                 <div className="flex items-center gap-2 text-amber-400 text-sm">
                   <AlertCircle className="w-4 h-4" />
-                  <span>Upgrade for more AI generations</span>
+                  <span>Low credits - upgrade for more</span>
                 </div>
               )}
             </div>
