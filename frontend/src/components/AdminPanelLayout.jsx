@@ -16,6 +16,10 @@ const AdminPanelLayout = ({ children }) => {
   const [admin, setAdmin] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
 
   const navItems = [
     { path: '/admin-panel', icon: LayoutDashboard, label: 'Dashboard', permission: '*' },
