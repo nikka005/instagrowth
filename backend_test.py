@@ -352,13 +352,62 @@ class InstaGrowthAPITester:
 
     def test_team_management(self):
         """Test team management functionality (requires Agency+ plan)"""
-        if not hasattr(self, 'demo_token') or not self.demo_token:
-            self.log("⚠️ Skipping Team Management - No demo user token")
+        # Create a new test user with agency role for testing
+        agency_email = f"agency_test_{int(time.time())}@example.com"
+        
+        # First register a new user
+        data = {
+            "name": "Agency Test User",
+            "email": agency_email,
+            "password": "AgencyTest123!"
+        }
+        success, response = self.run_test("Register Agency User", "POST", "/auth/register", 200, data)
+        if not success:
+            self.log("⚠️ Skipping Team Management - Could not create agency user")
             return True
 
-        # Temporarily use demo token for team tests (assuming demo user has agency role)
+        agency_token = response.get("token")
+        
+        # For testing purposes, we'll manually update the user role via direct database connection
+        # In a real scenario, this would be done through admin controls or payment processing
+        try:
+            import os
+            from motor.motor_asyncio import AsyncIOMotorClient
+            import asyncio
+            
+            async def update_user_role():
+                mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+                client = AsyncIOMotorClient(mongo_url)
+                db = client[os.environ.get('DB_NAME', 'test_database')]
+                
+                user_id = response.get("user", {}).get("user_id")
+                if user_id:
+                    await db.users.update_one(
+                        {"user_id": user_id},
+                        {"$set": {
+                            "role": "agency",
+                            "plan_id": "agency",
+                            "account_limit": 25,
+                            "ai_usage_limit": 500
+                        }}
+                    )
+                    self.log(f"   Updated user {user_id} to agency role")
+                    return True
+                return False
+            
+            # Run the async update
+            result = asyncio.run(update_user_role())
+            if not result:
+                self.log("⚠️ Skipping Team Management - Could not update user role")
+                return True
+                
+        except Exception as e:
+            self.log(f"⚠️ Skipping Team Management - Database update failed: {e}")
+            return True
+
+        # Use agency token for team tests
         original_token = self.token
-        self.token = self.demo_token
+        self.token = agency_token
 
         # Test creating a team
         data = {"name": f"Test Agency Team {int(time.time())}"}
@@ -400,6 +449,8 @@ class InstaGrowthAPITester:
                 "company_name": "Test Company"
             }
             success5, response = self.run_test("Update Team Settings", "PUT", f"/teams/{self.test_team_id}/settings", 200, settings_data)
+            if success5:
+                self.log(f"   White-label settings updated")
 
         # Restore original token
         self.token = original_token
