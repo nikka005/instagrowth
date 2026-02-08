@@ -1,213 +1,140 @@
-<analysis>**original_problem_statement:**
-The user requested the implementation of several features in a sequential manner.
-1.  **Backend Refactor**: Refactor the monolithic  into a modular structure.
-2.  **Fixes**: Address a mobile sidebar z-index issue and add timeout handling to AI endpoints.
-3.  **Separate Admin Login**: Create a distinct login system for administrators.
-4.  **Comprehensive Admin Panel**: Build a full-featured admin panel based on a detailed prompt, including user management, subscription control, plan management, AI usage monitoring, and more.
-5.  **New Features**:
-    *   Implement real Instagram API integration (currently a placeholder).
-    *   Add WebSocket support for real-time admin updates.
-    *   Implement Two-Factor Authentication (2FA) for regular users.
-    *   Implement 2FA for admins and an IP whitelist (requested but not started).
+<analysis>**original_problem_statement**: The user wants to build a production-ready SaaS application for Instagram growth called InstaGrowth OS. The initial request was to complete pending tasks from a previous session. Throughout the conversation, the user has requested the implementation of a full-featured admin panel, user dashboard, real API integrations (not mock), removal of Emergent branding, and the creation of legal and documentation pages.
+
+Most recently, the user provided a detailed gap analysis outlining several critical features required for a real SaaS launch. The user's latest request is to implement the following features from that list:
+- Email automation (welcome emails, renewal reminders, etc.)
+- A referral/affiliate system
+- Enhanced DM and Email template functionality
 
 **User's preferred language**: English
 
 **what currently exists?**
-The project is a full-stack SaaS application named InstaGrowth OS.
--   **Frontend**: A React application with a user dashboard and a multi-page admin panel. Key pages include AI Audit, Content Engine, Growth Planner, and new sections for DM Templates, Competitors, and A/B Testing. A separate admin login page () and a full admin dashboard layout have been created.
--   **Backend**: A FastAPI application that has been refactored from a single  file into a modular architecture with , , and . It supports user authentication (JWT, Google OAuth), Stripe subscriptions, AI content generation, and has placeholder/in-progress endpoints for the new admin panel, real Instagram integration, admin WebSockets, and user 2FA.
--   **Database**: PostgreSQL with SQLAlchemy ORM, containing tables for users, accounts, plans, subscriptions, and newly added tables for the admin system (, , ).
+A comprehensive full-stack SaaS application with a FastAPI backend and a React frontend. The application includes user/admin authentication, a detailed admin panel (for managing users, plans, revenue, and system settings), and a user dashboard with AI-powered features like Instagram account audits, content generation, and growth planning.
+
+Key systems in place include:
+- **Backend:** User & Admin auth, CRUD APIs for core features, real-time admin notifications via WebSockets, and integration with the Emergent LLM Key for AI features and Resend for emails.
+- **Frontend:** A complete UI for the admin panel and user dashboard, including pages for all major features.
+- **New Feature Scaffolding:** Basic backend routes, database models, and frontend pages have been created for a Support Ticket System, AI Credit System, Security/Abuse Protection, an Onboarding Flow, and an Announcements System. However, the core logic for these is not yet implemented.
 
 **Last working item**:
--   **Last item agent was working**: The agent was simultaneously scaffolding three major features requested by the user: Real Instagram API integration, WebSocket for admin real-time updates, and Two-Factor Authentication (2FA) for regular users.
-    -   **Instagram API**: Created  and  as placeholders for future integration with the Meta API.
-    -   **Admin WebSocket**: Created  to establish a real-time communication channel for the admin panel.
-    -   **User 2FA**: Created  for managing 2FA setup, and updated  to include a 2FA verification step in the login flow. On the frontend, created  and integrated it into the main  page.
+-   **Last item agent was working**: Implementing the critical features identified in the user's gap analysis. The agent created the necessary database models, backend API routers, and frontend pages/components for a support ticket system, an AI credit system, security features, an onboarding wizard, and an announcements system. The last action was adding the Support Tickets link to the admin sidebar and fixing a frontend compilation error.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: both. Backend endpoints for 2FA (generating QR, verifying OTP) need to be tested via . The end-to-end user flow for enabling 2FA and logging in with it needs to be tested using the frontend testing agent. The Admin WebSocket functionality requires updating the frontend to connect to the socket and then verifying real-time updates.
+-   **Which testing method agent to use?**: both
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1**: Admin panel pages are placeholders.
--   **Issue 2**: User 2FA flow is incomplete and untested.
--   **Issue 3**: Admin WebSocket is not integrated with the frontend.
-
-**Issues Detail**:
--   **Issue 1**: Admin panel pages are placeholders
-    -   **Attempted fixes**: The agent created the file structure and basic component shells for the admin panel (e.g., , ), but they contain no logic for data fetching, display, or actions.
-    -   **Next debug checklist**:
-        -   For each admin page (Users, Subscriptions, Plans, etc.), implement the frontend logic:
-            -   Fetch data from the corresponding backend API endpoint.
-            -   Display the data in tables with appropriate columns (using a library like ).
-            -   Implement UI for actions (e.g., modals for editing, buttons for deleting).
-            -   Implement charts for dashboard pages (, ) using a library like .
-    -   **Why fix this issue and what will be achieved with the fix?**: This will make the admin panel functional, allowing administrators to manage the platform as per the requirements.
-    -   **Status**: NOT STARTED
-    -   **Should Test frontend/backend/both after fix?**: both
-    -   **Is recurring issue?**: N
-    -   **Blocked on other issue**: None
-
--   **Issue 2**: User 2FA flow is incomplete and untested.
-    -   **Attempted fixes**: Backend routes and frontend components have been created.
-    -   **Next debug checklist**:
-        -   Test the  endpoint: ensure it returns a valid QR code SVG.
-        -   Test the frontend  component: ensure it can display the QR code and the form for OTP verification works.
-        -   Test the modified  flow: after correct password, it should return .
-        -   Test the  endpoint during login.
-        -   Perform an end-to-end test of a user enabling 2FA, logging out, and logging back in using their password and an OTP.
-    -   **Why fix this issue and what will be achieved with the fix?**: Completing this will enhance user account security.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: both
-    -   **Is recurring issue?**: N
-    -   **Blocked on other issue**: None
-
--   **Issue 3**: Admin WebSocket is not integrated with the frontend.
-    -   **Attempted fixes**: A backend WebSocket endpoint () was created in .
-    -   **Next debug checklist**:
-        -   Modify the backend services (e.g., user registration in ) to push messages to the  upon specific events.
-        -   In the frontend , establish a WebSocket connection to .
-        -   Implement logic to handle incoming messages and display them as real-time notifications (e.g., using a toast library).
-    -   **Why fix this issue and what will be achieved with the fix?**: This will provide administrators with real-time updates on platform activity without needing to refresh the page.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: both
-    -   **Is recurring issue?**: N
-    -   **Blocked on other issue**: None
+-   **Issue 1: Potential Frontend Instability** (P1)
+    -   **Description**: A frontend compilation error in  occurred and required a full dev server restart to resolve, even after a code fix was applied. This suggests an underlying instability or caching issue.
+    -   **Status**: RESOLVED (but monitor for recurrence)
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Frontend
 
 **In progress Task List**:
--   **Task 1**: Complete Backend Router Migration
-    -   **Where to resume**: This task is largely complete. The agent refactored  into multiple router files inside . A final check should be done to ensure no routes were missed from the original .
-    -   **What will be achieved with this?**: A more maintainable, scalable, and organized backend codebase.
-    -   **Status**: FINISHED
-    -   **Should Test frontend/backend/both after fix?**: both
-    -   **Blocked on something**: None
+-   **Task 1: Complete Implementation of Critical SaaS Features** (P0)
+    -   **Description**: The scaffolding for several critical systems exists, but the core logic is missing.
+    -   **Where to resume**:
+        1.  **AI Credit System**: Implement logic in  to deduct credits from the  table for each AI action. Create UI components to display credit balance and a flow to purchase more credits via Stripe.
+        2.  **Support Ticket System**: Build out the UI in  and  to allow users to submit, view, and reply to tickets. Implement the reply logic in  and trigger email notifications on replies.
+        3.  **Onboarding Flow**: In , add logic to redirect new users to the  page. Connect the actions in the onboarding steps (e.g., Connect Instagram) to their respective backend APIs.
+        4.  **Security Features**: In , implement logic for logging suspicious events and blocking IPs. Add rate limiting to sensitive AI endpoints.
+    -   **What will be achieved with this?**: The application will be more secure, robust, and user-friendly, aligning with standard SaaS practices.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Both
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P0) Implement Admin Panel Functionality**: Flesh out all the placeholder admin pages (, , , etc.) with data tables, charts, and action buttons as detailed in the user's master prompt.
-    -   **(P1) Complete User 2FA Implementation**: Finish and test the two-factor authentication flow for regular users.
-    -   **(P1) Complete Admin WebSocket Integration**: Integrate the frontend with the admin WebSocket for real-time notifications.
-    -   **(P2) Implement 2FA for Admins**: Add a two-factor authentication requirement for the separate admin login flow.
-    -   **(P2) Implement Admin IP Whitelisting**: Add a security layer to restrict admin access to a list of approved IP addresses.
+    -   **(P0) Email Automation System**: Implement automated emails for key user actions (welcome, plan upgrade, low credit warning, renewal reminder, churn prevention). This involves creating email templates and integrating Resend triggers in the backend.
+    -   **(P1) Referral/Affiliate System**: Develop a system for users to refer others. This requires new DB models, backend logic for tracking referrals and commissions, and frontend dashboards for affiliates.
+    -   **(P1) Enhance DM and Email Templates**: Improve the existing DM templates feature and build a system for admins to manage the new automated email templates.
 
 -   **Future Tasks**:
-    -   **(P2) Complete Real Instagram API Integration**: Replace the placeholder  with actual calls to the Meta Graph API. This will require user-provided API credentials.
-    -   **(P3) Light Mode Toggle**: Add a UI toggle for switching between dark (default) and light themes.
-    -   **(P3) Mobile App**: Develop a React Native mobile application.
+    -   **(P2) Full Stripe Integration**: Connect the application to Stripe live mode for real payments, moving beyond the current placeholder setup.
+    -   **(P2) Full Meta/Instagram Integration**: Test the complete OAuth flow with real user-provided credentials once the Meta app is approved.
+    -   **(P2) In-App Announcements**: Build the UI for admins to create announcements and for users to view them.
+    -   **(P2) Mobile Responsiveness Audit**: Perform a thorough review and fix of all pages to ensure a seamless mobile experience.
 
 **Completed work in this session**
--   **Backend Refactor**: Migrated the entire backend from a monolithic  into a modular structure using FastAPI's  ().
--   **Separate Admin System**:
-    -   Created a dedicated admin login page at  ().
-    -   Implemented a separate admin authentication flow with its own JWT.
-    -   Created a new  table in the database.
--   **Admin Panel Scaffolding**:
-    -   Built the complete frontend layout and routing for a comprehensive admin panel ().
-    -   Created placeholder pages for Dashboard, Users, Subscriptions, Plans, AI Usage, Revenue, etc.
-    -   Created the corresponding backend routers and service skeletons ().
--   **Bug Fixes & Improvements**:
-    -   Fixed a mobile sidebar z-index CSS issue in .
-    -   Added timeout handling to all AI content generation functions in .
--   **Configuration**: Created a  file for easier environment setup.
-
-**Earlier issues found/mentioned but not fixed**
--   None. The agent has addressed all issues raised by the user so far.
+-   **Admin Panel**:
+    -   Admin login simplified (2FA removed).
+    -   A comprehensive  page was created and linked.
+    -   Made with Emergent branding was removed.
+    -   The  page was overhauled to support real API key integration for OpenAI, Stripe, and Meta.
+-   **Instagram Integration**: A real OAuth flow was implemented for connecting Instagram accounts, replacing the previous manual entry system.
+-   **Legal & Compliance**: Created and linked pages for Privacy Policy, Terms of Service, Refund Policy, and a Data Deletion process compliant with Meta's requirements.
+-   **Critical Features (Scaffolding)**: Created the initial files, DB models, and API endpoints for Security, AI Credits, Support Tickets, and Onboarding systems.
+-   **Bug Fixes**: Resolved login errors (admin and user), fixed a body stream already read issue, and passed a full automated test run before starting the latest batch of features.
 
 **Known issue recurrence from previous fork**
--   None.
+- N/A
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Frontend**: React, React Router, Tailwind CSS, Axios
--   **Backend**: FastAPI, Python, SQLAlchemy (PostgreSQL)
--   **Authentication**: JWT (JSON Web Tokens), Google OAuth, separate tokens for users and admins
--   **Security**: 2FA (TOTP with  and ), Rate Limiting
--   **Real-time**: WebSockets
--   **Payments**: Stripe
--   **Email**: Resend
+-   **Frontend**: React, Vite, Tailwind CSS, Recharts
+-   **Backend**: FastAPI (Python), SQLAlchemy (ORM)
+-   **Database**: PostgreSQL
+-   **Authentication**: JWT, OAuth (Google, Meta), TOTP for users, 3-Factor for admin
+-   **Deployment**: Docker, Docker Compose
 
 **key DB schema**
--   **users**: {id, email, hashed_password, google_id, plan, created_at, **two_factor_secret**, **is_two_factor_enabled**}
--   **admins**: {id, name, email, hashed_password, role, created_at, two_factor_secret, is_two_factor_enabled}
--   **plans**: {id, name, price, account_limit, ai_limit, team_limit, white_label, status}
--   **system_settings**: {id, key, value}
--   **admin_logs**: {id, admin_id, action, target_id, created_at}
--   **subscriptions**: {id, user_id, stripe_subscription_id, plan, status, current_period_end}
+-   : Stores user information, roles, and plan details.
+-   : Defines subscription plan features and pricing.
+-   : Tracks user subscriptions and their status.
+-   : Stores connected Instagram account data.
+-    (new): Manages the credit balance for each user.
+-    &  (new): Manages the support ticket system.
 
 **changes in tech stack**
--   Added  and  packages for implementing Two-Factor Authentication.
+-   No significant changes.
 
 **All files of reference**
--   : New main entry point for the modular backend.
--   : Backup of the old monolithic server file.
--   : Directory containing all new modular API routers.
--   : Handles the separate  logic.
--   : Directory for admin panel specific endpoints.
--   : Handles enabling/verifying 2FA for users.
--   : WebSocket for admin real-time updates.
--   : Placeholder for real Instagram API integration.
--   : The new, separate login page for administrators.
--   : Directory containing all the new placeholder pages for the admin panel.
--   : The main layout component for the admin section.
--   : Frontend component for users to manage their 2FA settings.
--   : Updated to include all the new routes for the admin panel.
-
-**Areas that need refactoring**:
--   The placeholder pages in  need to be implemented, not refactored. The code is clean but empty.
-
-**key api endpoints**
--   : (POST) Authenticates an admin user.
--   : (POST) Verifies an admin's JWT.
--   : (WebSocket) Real-time channel for admin updates.
--   : (POST) Enables 2FA for a logged-in user and returns a QR code.
--   : (POST) Disables 2FA for a user.
--   : (POST) Verifies a 2FA OTP code during the login process.
--   Admin Panel APIs under  (e.g., , ) are defined but not fully implemented.
+-   : Contains new table definitions for all critical features.
+-   : Includes the new API routers.
+-   : Contains new routes for onboarding, support, and legal pages.
+-   : New pages include , , , and pages in the  directory.
+-   : New routers include , , , , and .
 
 **Critical Info for New Agent**
--   The backend has been fully refactored. Do not edit . All new backend logic should be added to the appropriate files within the  and  directories.
--   A comprehensive admin panel has been requested. The frontend and backend skeletons are in place, but the core functionality for each page needs to be built from scratch. Refer to the user's MASTER PROMPT in Chat Message 212 for detailed requirements.
--   Three major features (User 2FA, Admin WebSockets, Instagram API) are in an in-progress state. They need to be completed and thoroughly tested.
+-   The top priority is to complete the features from the user's gap analysis. You should start by building out the core logic for the **AI Credit System**, **Support System**, and **Onboarding Flow**, as the boilerplate code for these already exists.
+-   The user wants to implement an **Email Automation** and **Referral System** next.
+-   Full testing of Stripe and Meta/Instagram integrations will require API keys from the user.
+-   Admin credentials:
+    -   **Email**: 
+    -   **Password**: 
+    -   **Security Code**: 
 
 **documents and test reports created in this job**
--    (updated multiple times)
 -   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Latest)**:  (referring to Real Instagram API integration, WebSocket for admin real-time updates, 2FA for regular users). **Status**: IN PROGRESS.
-2.  **User**: Sent a MASTER PROMPT for a comprehensive admin panel and requested its implementation. **Status**: IN PROGRESS (scaffolding is done, implementation is pending).
-3.  **User**: . **Status**: COMPLETED.
-4.  **User**: . **Status**: COMPLETED (Agent provided a list).
-5.  **User**:  (referring to Resend key, refactor, z-index fix, timeout handling). **Status**: COMPLETED.
-6.  **User**: . **Status**: COMPLETED.
-7.  **User**: . **Status**: COMPLETED.
+1.  **User**: Requested a full list of all implemented admin and user functions. (Completed)
+2.  **User**: Provided a detailed gap analysis of missing critical features for a production-ready SaaS, including Security, AI Credits, Support System, Onboarding, Email Automation, and a Referral System. (In Progress)
+3.  **User**: Instructed the agent to start building the Email Automation, Referral System, and enhance DM/Email templates. (Pending)
 
 **Project Health Check:**
--   **Broken**: The admin panel pages are non-functional placeholders. The user 2FA, admin WebSocket, and Instagram integration features are incomplete and will not work without further development.
--   **Mocked**: The Instagram API service in  is a mock and does not connect to the real Instagram API.
+-   **Broken**: The newly scaffolded features (Support, Onboarding, Credits, etc.) are non-functional as their core logic has not been implemented.
+-   **Mocked**: Stripe and Meta/Instagram integrations are functionally mocked. They have UIs and backend endpoints but will not work without user-provided API keys.
 
 **3rd Party Integrations**
--   **OpenAI GPT-4o**: Used for AI content generation. - uses Emergent LLM Key.
--   **Stripe**: Used for subscriptions and payments. - requires User API Key (currently using a test key).
--   **Google OAuth**: For user authentication. - requires User API Key.
--   **Resend**: For sending transactional emails. - requires User API Key.
--   **Meta (Instagram)**: Placeholder for future integration. - will require User API Key.
+-   **OpenAI**: Uses Emergent LLM Key.
+-   **Resend (Email)**: Uses User API Key ().
+-   **Stripe (Payments)**: Requires User API Key.
+-   **Meta/Instagram API**: Requires User API Key.
+-   **Google OAuth**: Integrated for user login.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES (after initial feature implementation, but not after the most recent changes).
--   **Troubleshoot agent used after agent stuck in loop**: NO.
--   **Test files created**: None.
--   **Known regressions**: The admin dashboard is inaccessible via the UI after the latest changes to  which removed the  wrapper. The  component now handles its own auth, but the main dashboard () is likely unreachable without a direct link or fix.
+-   **Testing agent used after significant changes**: YES (but before the latest batch of features was started).
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: []
+-   **Known regressions**: None.
 
 **Credentials to test flow:**
--   **Admin User**:
-    -   URL: 
-    -   Email: 
-    -   Password: 
--   **Regular User**: Can be created through the standard registration form.
+-   **Admin URL**: 
+-   **Admin Email**: 
+-   **Admin Password**: 
+-   **Admin Security Code**: 
 
 **What agent forgot to execute**
--   The agent did not start the user-requested tasks of implementing **2FA for admins** or an **admin IP whitelist**, which were part of the MASTER PROMPT additions. It focused on 2FA for regular users first.
--   The agent did not fully test the separation of the admin routes in . While the  page works, the main admin panel at  now relies on  to handle its auth, which was a fix for a redirect loop but might have broken navigation to other admin sub-pages. This needs verification.</analysis>
+-   The agent has not yet started the implementation of the **Email Automation System** or the **Referral/Affiliate System**, which were explicitly requested in the user's last message.
+-   The core logic for all the critical features (AI credit deduction, support ticket replies, etc.) is missing, even though the files and routes have been created.</analysis>

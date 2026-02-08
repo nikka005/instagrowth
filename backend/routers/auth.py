@@ -43,7 +43,7 @@ async def register(data: UserCreate, request: Request):
     }
     await db.users.insert_one(user_doc)
     
-    origin = request.headers.get("origin", "https://growth-admin-staging.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://insta-automation-8.preview.emergentagent.com")
     verify_url = f"{origin}/verify-email?token={verification_token}"
     
     email_html = f"""
@@ -104,7 +104,7 @@ async def forgot_password(data: PasswordResetRequest, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    origin = request.headers.get("origin", "https://growth-admin-staging.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://insta-automation-8.preview.emergentagent.com")
     reset_url = f"{origin}/reset-password?token={reset_token}"
     
     email_html = f"""
@@ -343,7 +343,7 @@ async def instagram_data_deletion_callback(request: Request):
     )
     
     # Return response as required by Meta
-    origin = request.headers.get("origin", "https://growth-admin-staging.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://insta-automation-8.preview.emergentagent.com")
     return {
         "url": f"{origin}/data-deletion?id={deletion_id}",
         "confirmation_code": deletion_id

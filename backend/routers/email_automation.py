@@ -255,7 +255,7 @@ async def trigger_welcome_email(user_id: str, request: Request = None):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    frontend_url = "https://growth-admin-staging.preview.emergentagent.com"
+    frontend_url = "https://insta-automation-8.preview.emergentagent.com"
     
     success = await send_automated_email("welcome", user["email"], {
         "name": user.get("name", "there"),
@@ -288,7 +288,7 @@ async def check_and_send_renewal_reminders(request: Request = None):
                 "amount": "49",
                 "renewal_date": sub.get("current_period_end", "soon"),
                 "last_four": "4242",
-                "billing_url": "https://growth-admin-staging.preview.emergentagent.com/billing"
+                "billing_url": "https://insta-automation-8.preview.emergentagent.com/billing"
             })
             if success:
                 sent_count += 1
@@ -316,7 +316,7 @@ async def check_and_send_low_credit_alerts(request: Request = None):
                         "used": credits["used_credits"],
                         "total": credits["total_credits"],
                         "reset_date": credits.get("reset_date", "1st of next month"),
-                        "billing_url": "https://growth-admin-staging.preview.emergentagent.com/billing"
+                        "billing_url": "https://insta-automation-8.preview.emergentagent.com/billing"
                     })
                     if success:
                         sent_count += 1
