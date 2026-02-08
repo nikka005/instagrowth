@@ -194,7 +194,7 @@ async def process_referral_signup(referee_id: str, referee_email: str, referral_
     await add_extra_credits(
         referee_id, 
         REFERRAL_CONFIG["referee_reward_credits"],
-        f"Referral bonus - Welcome gift"
+        "Referral bonus - Welcome gift"
     )
     await db.referrals.update_one(
         {"referral_id": referral["referral_id"]},
