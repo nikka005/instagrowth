@@ -248,6 +248,30 @@ function AppRouter({ auth }) {
         }
       />
       <Route
+        path="/dm-templates"
+        element={
+          <ProtectedRoute auth={auth}>
+            <DMTemplatesPage auth={auth} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/competitors"
+        element={
+          <ProtectedRoute auth={auth}>
+            <CompetitorAnalysisPage auth={auth} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ab-testing"
+        element={
+          <ProtectedRoute auth={auth}>
+            <ABTestingPage auth={auth} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin"
         element={
           <ProtectedRoute auth={auth}>
