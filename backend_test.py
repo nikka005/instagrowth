@@ -438,12 +438,16 @@ class InstaGrowthAPITester:
         # Test all other endpoints
         tests = [
             self.test_auth_login,
+            self.test_forgot_password,
+            self.test_reset_password,
+            self.test_demo_login,
             self.test_plans_list,
             self.test_dashboard_stats,
             self.test_create_instagram_account,
             self.test_list_accounts,
             self.test_get_account,
             self.test_update_account,
+            self.test_ai_metrics_estimation,
             self.test_create_audit,
             self.test_list_audits,
             self.test_get_audit,
@@ -452,6 +456,7 @@ class InstaGrowthAPITester:
             self.test_create_growth_plan,
             self.test_list_growth_plans,
             self.test_get_growth_plan,
+            self.test_team_management,
         ]
         
         for test in tests:
