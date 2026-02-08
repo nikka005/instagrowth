@@ -207,6 +207,13 @@ function AppRouter({ auth }) {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/admin-login" element={<AdminLoginPage />} />
+      
+      {/* Legal Pages */}
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms" element={<TermsOfServicePage />} />
+      <Route path="/refund" element={<RefundPolicyPage />} />
+      <Route path="/data-deletion" element={<DataDeletionPage />} />
+      
       <Route path="/accept-invite" element={
         <ProtectedRoute auth={auth}>
           <TeamPage auth={auth} />
