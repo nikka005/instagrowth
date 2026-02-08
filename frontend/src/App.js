@@ -179,6 +179,7 @@ function AppRouter({ auth }) {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/admin-login" element={<AdminLoginPage />} />
       <Route path="/accept-invite" element={
         <ProtectedRoute auth={auth}>
           <TeamPage auth={auth} />
