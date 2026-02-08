@@ -5,35 +5,50 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 
 ## Architecture & Tech Stack
 - **Frontend**: React 19 + Tailwind CSS + Shadcn UI + Framer Motion
-- **Backend**: FastAPI + MongoDB (Motor async driver)
+- **Backend**: FastAPI + MongoDB (Motor async driver) - **NOW MODULAR**
 - **AI**: OpenAI GPT-5.2 via emergentintegrations library
 - **Auth**: JWT (email/password) + Emergent Google OAuth
 - **Payments**: Stripe subscriptions via emergentintegrations
 - **PDF Generation**: ReportLab
 - **Email**: Resend (for verification & password reset)
+- **Real-time**: WebSocket for notifications
 
-## User Personas
-1. **Instagram Growth Agencies** - Manage multiple client accounts, need audit reports and growth plans
-2. **Social Media Freelancers** - Individual managers handling 3-5 accounts
-3. **Influencers & Coaches** - Self-managing their Instagram presence
-4. **Digital Marketers** - Need content ideas and engagement strategies
+## Backend Architecture (v2.0.0 - MODULAR)
+```
+/app/backend/
+├── server.py              # Main app - includes all routers
+├── database.py            # MongoDB connection
+├── dependencies.py        # Auth & helper dependencies
+├── models/
+│   └── __init__.py        # All Pydantic models
+├── utils/
+│   └── __init__.py        # Password hashing, tokens, rate limiting
+├── services/
+│   └── __init__.py        # AI services, email with timeout handling
+├── routers/
+│   ├── __init__.py        # Router exports
+│   ├── auth.py            # Authentication endpoints
+│   ├── accounts.py        # Instagram account management
+│   ├── audits.py          # AI audit generation
+│   ├── content.py         # Content engine
+│   ├── growth.py          # Growth planner
+│   ├── teams.py           # Team management
+│   ├── dm_templates.py    # DM template CRUD
+│   ├── competitors.py     # Competitor analysis
+│   ├── ab_testing.py      # A/B testing
+│   ├── notifications.py   # Notification system
+│   ├── billing.py         # Stripe billing
+│   ├── admin.py           # Admin dashboard
+│   └── websocket.py       # Real-time WebSocket
+└── .env.example           # Configuration template
+```
 
-## Core Requirements (Static)
-### MVP Features
-- [x] User Authentication (JWT + Google OAuth)
-- [x] Email Verification via Resend
-- [x] Password Reset Flow
-- [x] Instagram Account Management (CRUD)
-- [x] AI Account Audit with PDF export
-- [x] AI Content Engine (reels, hooks, captions, hashtags)
-- [x] Growth Planner (7/14/30 day plans)
-- [x] Subscription Plans & Stripe Integration
-- [x] Team Management (invite + roles) for Agency/Enterprise
-- [x] White-label PDF Customization (logo + colors)
-- [x] AI-based Instagram Metrics Estimation
-- [x] Admin Dashboard
+## Admin Credentials
+| Email | Password | Role |
+|-------|----------|------|
+| admin@instagrowth.com | AdminPass123! | admin |
 
-### Subscription Tiers
+## Subscription Tiers
 | Plan | Price | Accounts | AI Usage | Team Features |
 |------|-------|----------|----------|---------------|
 | Starter | $19/mo | 1 | 10/mo | No |
@@ -41,9 +56,9 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 | Agency | $149/mo | 25 | 500/mo | Yes |
 | Enterprise | $299/mo | 100 | 2000/mo | Yes |
 
-## What's Been Implemented (Feb 2026)
+## Completed Features (Feb 2026)
 
-### Backend (FastAPI) v2.0.0
+### Backend (FastAPI) v2.0.0 - MODULAR ARCHITECTURE
 - [x] User registration and login with JWT
 - [x] Google OAuth integration via Emergent Auth
 - [x] Email verification flow (Resend integration)
@@ -52,23 +67,25 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - [x] AI-based Instagram metrics estimation
 - [x] AI Audit generation with OpenAI GPT-5.2
 - [x] AI Content generation (4 types)
-- [x] Growth Plan generation
+- [x] Growth Plan generation with extended timeout
 - [x] White-label PDF export for audits and plans
 - [x] Stripe subscription checkout
 - [x] Usage limits per plan
 - [x] Team management (create, invite, roles)
 - [x] Team settings (logo upload, brand color)
 - [x] Admin endpoints for user management
-- [x] DM Templates - Create, read, update, delete templates with variable extraction
-- [x] Competitor Analysis - AI-powered competitor insights and opportunities
-- [x] A/B Testing - Create tests, vote, determine winners
-- [x] Posting Recommendations - AI-based best time to post
-- [x] Content Favorites - Save/favorite content items
-- [x] Notifications System - Team invites, system alerts, plan upgrades
-- [x] Rate Limiting - Protect AI endpoints from abuse
-- [x] CSV Export - Export data for external analysis
-- [x] One-Time Products - Purchase individual reports and content packs
-- [x] **AI Timeout Handling** - Configurable timeouts (30s/60s/120s) for AI operations
+- [x] DM Templates CRUD with variable extraction
+- [x] Competitor Analysis AI-powered
+- [x] A/B Testing with voting system
+- [x] Posting Recommendations AI-based
+- [x] Content Favorites system
+- [x] Notifications System
+- [x] Rate Limiting protection
+- [x] CSV Export functionality
+- [x] One-Time Products system
+- [x] **WebSocket real-time notifications**
+- [x] **AI Timeout Handling (30s/60s/120s)**
+- [x] **Modular router architecture**
 
 ### Frontend (React)
 - [x] Landing page with hero, features, pricing, testimonials
@@ -83,84 +100,81 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - [x] Growth Planner with task checklist
 - [x] Billing page with plan comparison
 - [x] Settings page (profile, notifications, security)
-- [x] Team Management page (Agency/Enterprise only)
-- [x] Admin page (user management, stats)
-- [x] Dark mode premium theme (indigo/purple)
-- [x] DM Templates Page - Manage auto-reply templates
-- [x] Competitor Analysis Page - Analyze competitor accounts
-- [x] A/B Testing Page - Test content variants
-- [x] **Mobile Sidebar Overlay** - Fixed z-index and backdrop blur
+- [x] Team Management page
+- [x] Admin page
+- [x] DM Templates Page
+- [x] Competitor Analysis Page
+- [x] A/B Testing Page
+- [x] Mobile Sidebar Overlay (fixed)
 
-### Modular Backend Structure (Created)
-```
-/app/backend/
-├── server.py          # Main application (existing, with timeout handling)
-├── models/            # Pydantic models
-│   └── __init__.py
-├── utils/             # Helper functions (hash, tokens, rate limiting)
-│   └── __init__.py
-├── services/          # AI and email services with timeout handling
-│   └── __init__.py
-├── routers/           # API routers (ready for migration)
-│   └── auth.py
-└── .env.example       # Configuration template with Resend setup guide
-```
+## Completed Tasks This Session
+1. ✅ **P0: Backend Router Migration** - Split 2400+ line server.py into 13 modular routers
+2. ✅ **P0: Resend Configuration** - Created .env.example with setup instructions
+3. ✅ **P1: WebSocket Notifications** - Added real-time notification support
+4. ✅ **P2: AI Timeout Handling** - Configurable timeouts (SHORT=30s, MEDIUM=60s, LONG=120s)
+5. ✅ **P1: Mobile Sidebar Fix** - Fixed z-index and backdrop blur
 
-### Testing Status (Feb 8, 2026)
-- Backend: 95.5% pass rate (21/22 tests)
-- Frontend: 100% pass rate
-- Mobile: Sidebar overlay working correctly
-- Test report: `/app/test_reports/iteration_3.json`
+## API Endpoints Reference
 
-## Completed Tasks (This Session)
-- [x] P0: Documented Resend API key configuration (.env.example created)
-- [x] P1: Created modular backend structure (models, utils, services, routers)
-- [x] P1: Fixed mobile sidebar overlay z-index issue
-- [x] P2: Added AI timeout handling (30s/60s/120s configurable)
+### Authentication (`/api/auth`)
+- POST `/register` - Register new user
+- POST `/login` - Login with email/password
+- POST `/session` - Create session from Google OAuth
+- GET `/me` - Get current user
+- POST `/logout` - Logout
+- POST `/verify-email` - Verify email token
+- POST `/forgot-password` - Request password reset
+- POST `/reset-password` - Reset password with token
 
-## Prioritized Backlog
+### Instagram Accounts (`/api/accounts`)
+- POST `/` - Create account
+- GET `/` - List accounts
+- GET `/{id}` - Get account
+- PUT `/{id}` - Update account
+- DELETE `/{id}` - Delete account
+- POST `/{id}/refresh-metrics` - Refresh AI metrics
+- GET `/{id}/posting-recommendations` - Get posting times
 
-### P0 - Critical
-- [ ] Complete migration of server.py to use modular routers
+### AI Features
+- POST `/api/audits` - Create AI audit
+- POST `/api/content/generate` - Generate content
+- POST `/api/growth-plans` - Create growth plan
+- POST `/api/competitors/analyze` - Analyze competitors
+- POST `/api/dm-templates/{id}/generate-reply` - Generate DM reply
 
-### P1 - High Priority
-- [ ] Real Instagram API integration (when Meta API available)
-- [ ] Add more comprehensive error handling for AI failures
+### Billing (`/api/billing`)
+- GET `/plans` - Get subscription plans
+- POST `/create-checkout-session` - Create Stripe checkout
+- GET `/subscription` - Get user subscription
+- POST `/upgrade` - Upgrade plan
 
-### P2 - Medium Priority
-- [ ] Performance analytics dashboard
-- [ ] More detailed competitor metrics
-- [ ] Automated scheduling integration
-- [ ] Zapier integration
-
-### P3 - Nice to Have
-- [ ] Mobile app (React Native)
-- [ ] Light mode toggle
-- [ ] Chrome extension for Instagram
-- [ ] Real-time notifications with WebSocket
-
-## Next Tasks List
-1. Complete backend refactoring - move all routes to routers/
-2. Add WebSocket support for real-time notifications
-3. Enhance competitor analysis with more metrics
-4. Build scheduling recommendation engine
-
-## Technical Notes
-- All AI calls use emergentintegrations library with EMERGENT_LLM_KEY
-- AI Timeout configuration: SHORT=30s, MEDIUM=60s, LONG=120s
-- Email service uses Resend (see .env.example for setup)
-- PDF generation uses ReportLab with white-label support
-- MongoDB collections: users, user_sessions, instagram_accounts, audits, content_items, growth_plans, payment_transactions, teams, team_members, password_resets, dm_templates, competitor_analyses, ab_tests, notifications, one_time_purchases
-- All API routes prefixed with /api
-- Instagram metrics are AI-estimated (MOCKED - not real Instagram API)
+### WebSocket
+- WS `/api/ws/{user_id}` - Real-time notifications
 
 ## Configuration Required
-See `/app/backend/.env.example` for complete configuration guide including:
-- Resend API key setup for production emails
-- Stripe API key configuration
-- JWT secret generation
-- MongoDB connection
+
+### Required API Keys (set in `/app/backend/.env`)
+```
+RESEND_API_KEY=re_your_key_here      # For email delivery
+STRIPE_API_KEY=sk_test_your_key      # For payments  
+EMERGENT_LLM_KEY=your_key            # For AI features
+```
+
+### Setup Resend for Production Emails
+1. Go to https://resend.com
+2. Create account and verify domain
+3. Generate API key
+4. Add to .env: `RESEND_API_KEY=re_xxxxx`
+5. Update: `SENDER_EMAIL=noreply@yourdomain.com`
 
 ## Known Limitations
 1. Instagram data is AI-estimated (real API requires Meta approval)
-2. Email sending requires valid Resend API key (currently using placeholder)
+2. Email sending requires valid Resend API key
+3. Stripe webhook endpoint is placeholder (configure in Stripe dashboard)
+
+## Future Enhancements
+- [ ] Real Instagram API integration
+- [ ] Mobile app (React Native)
+- [ ] Light mode toggle
+- [ ] Chrome extension
+- [ ] Zapier integration
