@@ -1,0 +1,290 @@
+# ============================================
+# InstaGrowth OS - All Commands Reference
+# ============================================
+
+# ==========================================
+# 1. INITIAL SERVER SETUP (Run Once)
+# ==========================================
+
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install essential tools
+sudo apt install -y curl wget git vim htop unzip software-properties-common
+
+# ==========================================
+# 2. INSTALL NODE.JS 20.x
+# ==========================================
+
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g yarn pm2
+
+# Verify
+node --version
+npm --version
+
+# ==========================================
+# 3. INSTALL PYTHON 3.11
+# ==========================================
+
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update
+sudo apt install -y python3.11 python3.11-venv python3.11-dev python3-pip
+
+# Verify
+python3.11 --version
+
+# ==========================================
+# 4. INSTALL MONGODB 7.0
+# ==========================================
+
+# Add repository
+curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
+   sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | \
+   sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+
+# Install
+sudo apt update
+sudo apt install -y mongodb-org
+
+# Start
+sudo systemctl start mongod
+sudo systemctl enable mongod
+sudo systemctl status mongod
+
+# ==========================================
+# 5. INSTALL NGINX
+# ==========================================
+
+sudo apt install -y nginx
+sudo systemctl start nginx
+sudo systemctl enable nginx
+
+# ==========================================
+# 6. INSTALL CERTBOT (SSL)
+# ==========================================
+
+sudo apt install -y certbot python3-certbot-nginx
+
+# ==========================================
+# 7. CREATE APP DIRECTORY
+# ==========================================
+
+sudo mkdir -p /var/www/instagrowth
+sudo chown -R $USER:$USER /var/www/instagrowth
+
+# ==========================================
+# 8. BACKEND SETUP
+# ==========================================
+
+cd /var/www/instagrowth/backend
+
+# Create virtual environment
+python3.11 -m venv venv
+
+# Activate
+source venv/bin/activate
+
+# Install packages
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Install Emergent Integrations (IMPORTANT!)
+pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+
+# Test
+python -c "from server import app; print('OK')"
+
+# ==========================================
+# 9. FRONTEND SETUP
+# ==========================================
+
+cd /var/www/instagrowth/frontend
+
+# Install dependencies
+yarn install
+
+# Build production
+yarn build
+
+# ==========================================
+# 10. NGINX CONFIGURATION
+# ==========================================
+
+# Create config (replace yourdomain.com)
+sudo nano /etc/nginx/sites-available/instagrowth
+
+# Enable site
+sudo ln -sf /etc/nginx/sites-available/instagrowth /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# Test and reload
+sudo nginx -t
+sudo systemctl reload nginx
+
+# ==========================================
+# 11. SSL CERTIFICATE
+# ==========================================
+
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+
+# Test renewal
+sudo certbot renew --dry-run
+
+# ==========================================
+# 12. PM2 PROCESS MANAGER
+# ==========================================
+
+# Start backend
+cd /var/www/instagrowth
+pm2 start ecosystem.config.js
+
+# Save config
+pm2 save
+
+# Auto-start on reboot
+pm2 startup systemd
+
+# ==========================================
+# DAILY COMMANDS
+# ==========================================
+
+# View app status
+pm2 status
+
+# View logs
+pm2 logs instagrowth-backend
+
+# Restart app
+pm2 restart instagrowth-backend
+
+# Reload (zero-downtime)
+pm2 reload instagrowth-backend
+
+# Stop app
+pm2 stop instagrowth-backend
+
+# ==========================================
+# UPDATE/DEPLOY COMMANDS
+# ==========================================
+
+# Pull latest code
+cd /var/www/instagrowth
+git pull origin main
+
+# Update backend
+cd /var/www/instagrowth/backend
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Update frontend
+cd /var/www/instagrowth/frontend
+yarn install
+yarn build
+
+# Restart services
+pm2 restart instagrowth-backend
+sudo systemctl reload nginx
+
+# ==========================================
+# TROUBLESHOOTING COMMANDS
+# ==========================================
+
+# Check backend logs
+pm2 logs instagrowth-backend --lines 100
+
+# Check Nginx logs
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/access.log
+
+# Check MongoDB
+sudo systemctl status mongod
+sudo tail -f /var/log/mongodb/mongod.log
+
+# Check ports
+sudo lsof -i :80
+sudo lsof -i :443
+sudo lsof -i :8001
+sudo lsof -i :27017
+
+# Check disk space
+df -h
+
+# Check memory
+free -m
+
+# Check processes
+htop
+
+# ==========================================
+# BACKUP COMMANDS
+# ==========================================
+
+# Backup MongoDB
+mongodump --out /backup/mongodb/$(date +%Y%m%d)
+
+# Restore MongoDB
+mongorestore /backup/mongodb/20240208
+
+# Backup files
+tar -czvf /backup/instagrowth-$(date +%Y%m%d).tar.gz /var/www/instagrowth
+
+# ==========================================
+# PYTHON PACKAGES (requirements.txt)
+# ==========================================
+
+# Required packages:
+# fastapi==0.109.0
+# uvicorn[standard]==0.27.0
+# motor==3.3.2
+# pymongo==4.6.1
+# python-jose[cryptography]==3.3.0
+# passlib[bcrypt]==1.7.4
+# python-multipart==0.0.6
+# httpx==0.26.0
+# pydantic==2.5.3
+# python-dotenv==1.0.0
+# pyotp==2.9.0
+# qrcode==7.4.2
+# Pillow==10.2.0
+# aiohttp==3.9.1
+# resend==0.7.2
+# fpdf2==2.7.6
+
+# Special install:
+# pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+
+# ==========================================
+# ENVIRONMENT VARIABLES
+# ==========================================
+
+# Backend .env:
+# MONGO_URL=mongodb://localhost:27017
+# DB_NAME=instagrowth_db
+# JWT_SECRET=your-secret-key
+# ADMIN_SECRET_CODE=INSTAGROWTH_ADMIN_2024
+# OPENAI_API_KEY=your-key
+# RESEND_API_KEY=your-key
+# SENDER_EMAIL=noreply@yourdomain.com
+# FRONTEND_URL=https://yourdomain.com
+
+# Frontend .env:
+# REACT_APP_BACKEND_URL=https://yourdomain.com
+# GENERATE_SOURCEMAP=false
+
+# ==========================================
+# USEFUL PATHS
+# ==========================================
+
+# App directory: /var/www/instagrowth
+# Backend: /var/www/instagrowth/backend
+# Frontend: /var/www/instagrowth/frontend
+# Frontend build: /var/www/instagrowth/frontend/build
+# Nginx config: /etc/nginx/sites-available/instagrowth
+# PM2 logs: /var/log/pm2/
+# MongoDB data: /var/lib/mongodb
+# MongoDB logs: /var/log/mongodb/mongod.log
+# Nginx logs: /var/log/nginx/
