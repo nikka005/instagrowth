@@ -542,7 +542,7 @@ async def estimate_instagram_metrics(username: str, niche: str) -> Dict[str, Any
     prompt = f"Estimate Instagram metrics for @{username} in the {niche} niche."
     
     try:
-        response = await generate_ai_content(prompt, system_message)
+        response = await generate_ai_content(prompt, system_message, timeout_seconds=AI_TIMEOUT_SHORT)
         import json
         cleaned = response.strip()
         if cleaned.startswith("```json"):
@@ -552,6 +552,8 @@ async def estimate_instagram_metrics(username: str, niche: str) -> Dict[str, Any
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
         return json.loads(cleaned.strip())
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"AI metrics estimation error: {e}")
         return {
