@@ -19,7 +19,7 @@ router = APIRouter(prefix="/growth-plans", tags=["Growth Planner"])
 async def create_growth_plan(data: GrowthPlanRequest, request: Request):
     db = get_database()
     user = await get_current_user(request, db)
-    await check_ai_usage(user, db)
+    await check_ai_usage(user, db, feature="growth_plan")
     
     account = await db.instagram_accounts.find_one(
         {"account_id": data.account_id, "user_id": user.user_id}, {"_id": 0}
