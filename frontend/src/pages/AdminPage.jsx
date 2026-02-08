@@ -140,9 +140,12 @@ const AdminPage = ({ auth }) => {
   const updateUserRole = async (userId, newRole) => {
     setUpdatingUser(userId);
     try {
+      const adminToken = localStorage.getItem("admin_token");
+      const headers = adminToken ? { "Authorization": `Bearer ${adminToken}` } : {};
       const response = await fetch(`${API_URL}/api/admin/users/${userId}/role?role=${newRole}`, {
         method: "PUT",
         credentials: "include",
+        headers
       });
 
       if (!response.ok) {
@@ -150,7 +153,7 @@ const AdminPage = ({ auth }) => {
       }
 
       toast.success("User role updated!");
-      fetchUsers();
+      fetchUsers(adminToken);
     } catch (error) {
       toast.error(error.message);
     } finally {
