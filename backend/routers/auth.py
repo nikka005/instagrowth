@@ -66,7 +66,7 @@ async def register(data: UserCreate, request: Request):
     # Notify admins of new user registration
     try:
         await notify_new_user({"user_id": user_id, "email": data.email, "name": data.name, "role": "starter"})
-    except Exception as e:
+    except Exception:
         pass  # Don't fail registration if notification fails
     
     token = create_token(user_id, data.email)
