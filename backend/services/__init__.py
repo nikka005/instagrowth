@@ -4,12 +4,18 @@ import asyncio
 import uuid
 import resend
 from typing import Dict, Any, Optional
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@instagrowth.app')
+
+# AI Timeout configuration
+AI_TIMEOUT_SHORT = 30   # For simple operations (metrics, DM replies)
+AI_TIMEOUT_MEDIUM = 60  # For standard operations (content, audits)
+AI_TIMEOUT_LONG = 120   # For complex operations (growth plans)
 
 if RESEND_API_KEY and RESEND_API_KEY != "re_placeholder_key":
     resend.api_key = RESEND_API_KEY
