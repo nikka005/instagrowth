@@ -32,7 +32,7 @@ async def create_checkout_session(plan_id: str, request: Request):
     
     if not STRIPE_API_KEY or STRIPE_API_KEY == "sk_test_emergent":
         return {
-            "url": f"https://insta-automation-8.preview.emergentagent.com/billing?mock=true&plan={plan_id}",
+            "url": f"https://server-restore-2.preview.emergentagent.com/billing?mock=true&plan={plan_id}",
             "mock": True,
             "message": "Stripe not configured. This is a mock checkout."
         }
@@ -40,7 +40,7 @@ async def create_checkout_session(plan_id: str, request: Request):
     try:
         from emergentintegrations.payments.stripe import create_checkout
         
-        origin = request.headers.get("origin", "https://insta-automation-8.preview.emergentagent.com")
+        origin = request.headers.get("origin", "https://server-restore-2.preview.emergentagent.com")
         
         checkout_result = await create_checkout(
             api_key=STRIPE_API_KEY,
