@@ -620,11 +620,13 @@ async def generate_dm_reply(message: str, context: str, tone: str = "friendly") 
     prompt = f"Generate a reply to this DM: \"{message}\""
     
     try:
-        response = await generate_ai_content(prompt, system_message)
+        response = await generate_ai_content(prompt, system_message, timeout_seconds=AI_TIMEOUT_SHORT)
         return response.strip()
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"DM reply generation error: {e}")
-        return "Thanks for reaching out! I'll get back to you soon. 😊"
+        return "Thanks for reaching out! I'll get back to you soon."
 
 async def analyze_competitor(competitor_username: str, niche: str) -> Dict[str, Any]:
     """AI-based competitor analysis"""
@@ -643,7 +645,7 @@ async def analyze_competitor(competitor_username: str, niche: str) -> Dict[str, 
     prompt = f"Analyze Instagram competitor @{competitor_username} in the {niche} niche."
     
     try:
-        response = await generate_ai_content(prompt, system_message)
+        response = await generate_ai_content(prompt, system_message, timeout_seconds=AI_TIMEOUT_MEDIUM)
         import json
         cleaned = response.strip()
         if cleaned.startswith("```json"):
@@ -653,6 +655,8 @@ async def analyze_competitor(competitor_username: str, niche: str) -> Dict[str, 
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
         return json.loads(cleaned.strip())
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Competitor analysis error: {e}")
         return {
