@@ -38,6 +38,83 @@ const AdminPanelLayout = ({ children }) => {
     verifyAdmin();
   }, []);
 
+  // WebSocket connection for real-time updates
+  const connectWebSocket = useCallback(() => {
+    if (!admin || wsRef.current?.readyState === WebSocket.OPEN) return;
+
+    try {
+      const wsUrl = `${WS_URL}/api/admin-ws/${admin.admin_id}?role=${admin.role}`;
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        console.log('Admin WebSocket connected');
+        // Send ping every 30 seconds to keep connection alive
+        const pingInterval = setInterval(() => {
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+          }
+        }, 30000);
+        wsRef.current.pingInterval = pingInterval;
+      };
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'pong' || data.type === 'connection') return;
+          
+          // Add to notifications
+          const notification = {
+            id: Date.now(),
+            type: data.type,
+            title: data.title || 'Notification',
+            message: data.message || '',
+            priority: data.priority || 'normal',
+            timestamp: new Date().toISOString()
+          };
+          
+          setNotifications(prev => [notification, ...prev].slice(0, 50));
+          
+          // Show toast for high priority
+          if (data.priority === 'high') {
+            toast(data.title, { description: data.message });
+          }
+        } catch (e) {
+          console.error('WebSocket message error:', e);
+        }
+      };
+
+      wsRef.current.onclose = () => {
+        console.log('Admin WebSocket disconnected');
+        if (wsRef.current?.pingInterval) {
+          clearInterval(wsRef.current.pingInterval);
+        }
+        // Reconnect after 5 seconds
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connectWebSocket();
+        }, 5000);
+      };
+
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    } catch (error) {
+      console.error('Failed to connect WebSocket:', error);
+    }
+  }, [admin]);
+
+  useEffect(() => {
+    if (admin) {
+      connectWebSocket();
+    }
+    return () => {
+      if (wsRef.current) {
+        if (wsRef.current.pingInterval) clearInterval(wsRef.current.pingInterval);
+        wsRef.current.close();
+      }
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+    };
+  }, [admin, connectWebSocket]);
+
   const verifyAdmin = async () => {
     try {
       const token = localStorage.getItem('admin_panel_token');
