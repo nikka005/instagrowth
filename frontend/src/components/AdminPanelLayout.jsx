@@ -30,6 +30,8 @@ const AdminPanelLayout = ({ children }) => {
     { path: '/admin-panel/ai-usage', icon: Cpu, label: 'AI Usage', permission: '*' },
     { path: '/admin-panel/revenue', icon: DollarSign, label: 'Revenue', permission: 'revenue' },
     { path: '/admin-panel/tickets', icon: MessageSquare, label: 'Support Tickets', permission: '*' },
+    { path: '/admin-panel/referrals', icon: Gift, label: 'Referrals', permission: '*' },
+    { path: '/admin-panel/announcements', icon: Megaphone, label: 'Announcements', permission: '*' },
     { path: '/admin-panel/team', icon: UsersRound, label: 'Team Management', permission: '*' },
     { path: '/admin-panel/settings', icon: Settings, label: 'System Settings', permission: '*' },
     { path: '/admin-panel/logs', icon: FileText, label: 'Logs', permission: 'logs' },
