@@ -6,12 +6,10 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const AdminPanelLoginPage = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState('credentials'); // credentials, 2fa
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    adminCode: '',
-    totpCode: ''
+    adminCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -23,7 +21,7 @@ const AdminPanelLoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/admin-panel/auth/login?email=${encodeURIComponent(formData.email)}&password=${encodeURIComponent(formData.password)}&admin_code=${encodeURIComponent(formData.adminCode)}${formData.totpCode ? `&totp_code=${formData.totpCode}` : ''}`, {
+      const response = await fetch(`${API_URL}/api/admin-panel/auth/login?email=${encodeURIComponent(formData.email)}&password=${encodeURIComponent(formData.password)}&admin_code=${encodeURIComponent(formData.adminCode)}`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -32,11 +30,6 @@ const AdminPanelLoginPage = () => {
 
       if (!response.ok) {
         throw new Error(data.detail || 'Login failed');
-      }
-
-      if (data.requires_2fa) {
-        setStep('2fa');
-        return;
       }
 
       localStorage.setItem('admin_panel_token', data.token);
@@ -75,97 +68,77 @@ const AdminPanelLoginPage = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {step === 'credentials' ? (
-              <>
-                {/* Email */}
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                      placeholder="admin@example.com"
-                      required
-                    />
-                  </div>
-                </div>
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  placeholder="admin@example.com"
+                  required
+                  data-testid="admin-email-input"
+                />
+              </div>
+            </div>
 
-                {/* Password */}
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full pl-11 pr-11 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full pl-11 pr-11 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  placeholder="••••••••"
+                  required
+                  data-testid="admin-password-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
 
-                {/* Admin Code */}
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Admin Security Code</label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                    <input
-                      type="password"
-                      value={formData.adminCode}
-                      onChange={(e) => setFormData({ ...formData, adminCode: e.target.value })}
-                      className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                      placeholder="Enter admin code"
-                      required
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* 2FA Code */}
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Two-Factor Authentication Code</label>
-                  <input
-                    type="text"
-                    value={formData.totpCode}
-                    onChange={(e) => setFormData({ ...formData, totpCode: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-center text-2xl tracking-widest placeholder-white/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                    placeholder="000000"
-                    maxLength={6}
-                    required
-                    autoFocus
-                  />
-                  <p className="mt-2 text-xs text-white/40 text-center">Enter the code from your authenticator app</p>
-                </div>
-              </>
-            )}
+            {/* Admin Code */}
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">Admin Security Code</label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                <input
+                  type="password"
+                  value={formData.adminCode}
+                  onChange={(e) => setFormData({ ...formData, adminCode: e.target.value })}
+                  className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  placeholder="Enter admin code"
+                  required
+                  data-testid="admin-code-input"
+                />
+              </div>
+            </div>
 
             <button
               type="submit"
               disabled={loading}
               className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-600 hover:to-purple-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-[#1e293b] transition-all disabled:opacity-50"
+              data-testid="admin-login-btn"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
                   Authenticating...
                 </span>
-              ) : step === 'credentials' ? (
-                'Sign In'
               ) : (
-                'Verify'
+                'Sign In'
               )}
             </button>
           </form>
