@@ -499,7 +499,12 @@ async def increment_ai_usage(user_id: str):
 
 # ==================== AI FUNCTIONS ====================
 
-async def generate_ai_content(prompt: str, system_message: str) -> str:
+# AI Timeout configuration
+AI_TIMEOUT_SHORT = 30  # For simple operations
+AI_TIMEOUT_MEDIUM = 60  # For standard operations
+AI_TIMEOUT_LONG = 120  # For complex operations like growth plans
+
+async def generate_ai_content(prompt: str, system_message: str, timeout_seconds: int = AI_TIMEOUT_MEDIUM) -> str:
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     
     chat = LlmChat(
@@ -509,8 +514,19 @@ async def generate_ai_content(prompt: str, system_message: str) -> str:
     ).with_model("openai", "gpt-5.2")
     
     user_message = UserMessage(text=prompt)
-    response = await chat.send_message(user_message)
-    return response
+    
+    try:
+        response = await asyncio.wait_for(
+            chat.send_message(user_message),
+            timeout=timeout_seconds
+        )
+        return response
+    except asyncio.TimeoutError:
+        logger.error(f"AI generation timed out after {timeout_seconds}s")
+        raise HTTPException(
+            status_code=504, 
+            detail=f"AI generation timed out. Please try again or simplify your request."
+        )
 
 async def estimate_instagram_metrics(username: str, niche: str) -> Dict[str, Any]:
     system_message = """You are an Instagram analytics expert. Based on the username and niche, 
