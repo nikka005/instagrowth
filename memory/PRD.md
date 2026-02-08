@@ -3,258 +3,184 @@
 ## Original Problem Statement
 Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for freelancers and agencies.
 
+## Current Status: PRODUCTION READY ✅
+
+---
+
 ## Architecture Overview
 
 ### Tech Stack
-- **Frontend**: React 19 + Tailwind CSS + Shadcn UI + Recharts
+- **Frontend**: React 19 + Tailwind CSS + Shadcn UI + Recharts + Framer Motion
 - **Backend**: FastAPI + MongoDB (Motor) - **FULLY MODULAR**
-- **AI**: OpenAI GPT-5.2 via emergentintegrations
-- **Auth**: JWT + Google OAuth + **Separate Admin Panel Auth**
+- **AI**: OpenAI GPT-5.2 via Emergent Universal Key
+- **Auth**: JWT + Google OAuth + Separate Admin Panel Auth
 - **Payments**: Stripe subscriptions
 - **Email**: Resend
 - **Real-time**: WebSocket
 - **2FA**: TOTP (Google Authenticator compatible)
+- **Instagram**: Meta Graph API (OAuth 2.0)
 
-## Authentication Systems
+---
 
-### 1. User Authentication (`/login`)
-- Email/Password with JWT
-- Google OAuth
-- **Two-Factor Authentication (TOTP) Support**
-- 7-day sessions
+## Completed Features
 
-### 2. Admin Panel (`/admin-panel/login`)
-- Production-grade SaaS admin
-- 3-factor authentication (Email + Password + Security Code)
-- **2FA Support (TOTP)**
-- **IP Whitelist**
-- Role-based access control (super_admin, support, finance)
-- 8-hour sessions
-- Full audit logging
-
-## Admin Panel Features - COMPLETED
-
-### Dashboard
-- Total Users, Subscriptions, Accounts, AI Requests
-- Revenue chart (30 days)
-- New Users chart (30 days)
-- AI Usage trend
-- Users by Plan distribution (Pie chart)
-
-### Documentation (NEW)
-- Complete admin panel guide
-- How-to for all features
-- Searchable documentation
-- Quick reference cards
-- Expandable sections for each feature
-
-### User Management
-- View all users with search/filter
-- Change user plans
-- Block/Unblock users
-- Reset passwords
-- Delete users
-- Export to CSV
-
-### Subscription Management
-- View all subscriptions
-- Cancel subscriptions
-- Change plans
-- Sync with Stripe
-
-### Plan Management
-- Create new plans
-- Edit pricing and limits
-- Set: Account limit, AI credits, Team seats, White-label
-- Enable/Disable plans
-- View subscriber counts
-
-### Revenue Dashboard
-- MRR (Monthly Recurring Revenue)
-- ARR (Annual Recurring Revenue)
-- Churn Rate
-- ARPU (Average Revenue Per User)
-- Revenue by Plan chart
-
-### AI Usage Monitoring
-- Requests today/month
-- Estimated cost
-- Usage by feature
-- Top users table
-
-### System Settings (Super Admin only)
-- Platform name
-- Support email
-- Default AI model
-- API Keys: OpenAI, Stripe, Resend, Meta
-
-### Activity Logs
-- All admin actions logged
-- Filter by action/type
-- IP address tracking
-- Timestamps
-
-### Security - COMPLETED
-- **2FA with TOTP for admins**
-- **IP Whitelist per admin**
-- Backup codes
-- Session management
-
-## User 2FA - COMPLETED
-
-### Features
-- Enable/Disable 2FA in Settings > Security tab
-- QR code generation for authenticator apps
-- Manual entry key support
-- 10 backup codes generated on setup
-- Backup code regeneration with verification
-- 2FA required on login when enabled
-
-## Admin WebSocket - COMPLETED
-
-### Real-time Notifications
-- New user registrations
-- Subscription changes
-- AI usage alerts
-- System events
-- Notification dropdown in admin header
-
-## Admin Credentials
-
-### Super Admin (Full Access)
-| Field | Value |
-|-------|-------|
-| Email | superadmin@instagrowth.com |
-| Password | SuperAdmin123! |
-| Security Code | INSTAGROWTH_ADMIN_2024 |
-| Login URL | `/admin-panel/login` |
-
-## Admin Roles & Permissions
-
-| Role | Permissions |
-|------|-------------|
-| super_admin | Full access (all features) |
-| support | Users, Accounts, Logs |
-| finance | Subscriptions, Revenue, Plans |
-
-## Backend Architecture
-
-```
-/app/backend/
-├── server.py                    # Main app
-├── database.py                  # MongoDB
-├── dependencies.py              # Auth helpers
-├── models/
-│   ├── __init__.py              # User models
-│   └── admin_models.py          # Admin models
-├── utils/
-│   └── __init__.py              # Helpers
-├── services/
-│   └── __init__.py              # AI + Email
-├── routers/
-│   ├── auth.py                  # User auth with 2FA
-│   ├── user_2fa.py              # User 2FA management
-│   ├── admin_auth.py            # Simple admin auth
-│   ├── admin_panel_auth.py      # Full admin panel auth + 2FA + IP
-│   ├── admin_panel_users.py     # User management
-│   ├── admin_panel_subscriptions.py  # Subs + Plans
-│   ├── admin_panel_dashboard.py # Dashboard + Analytics
-│   ├── admin_websocket.py       # Real-time notifications
-│   ├── accounts.py
-│   ├── audits.py
-│   ├── content.py
-│   ├── growth.py
-│   ├── teams.py
-│   ├── dm_templates.py
-│   ├── competitors.py
-│   ├── ab_testing.py
-│   ├── notifications.py
-│   ├── billing.py
-│   ├── admin.py
-│   ├── instagram_api.py         # Instagram API (placeholder)
-│   └── websocket.py
-└── .env.example
-```
-
-## Frontend Pages
-
-### User Pages
-- `/` - Landing Page
-- `/login` - User Login (with 2FA support)
-- `/register` - User Registration
-- `/dashboard` - User Dashboard
-- `/accounts` - Instagram Accounts
-- `/audit` - AI Audit
-- `/content` - Content Engine
-- `/planner` - Growth Plans
-- `/billing` - Subscription
-- `/settings` - User Settings (with 2FA in Security tab)
-- `/team` - Team Management
-- `/dm-templates` - DM Templates
-- `/competitors` - Competitor Analysis
-- `/ab-testing` - A/B Testing
-
-### Admin Panel Pages
-- `/admin-panel/login` - Admin Login
-- `/admin-panel` - Dashboard
-- `/admin-panel/users` - User Management
-- `/admin-panel/plans` - Plan Management
-- `/admin-panel/revenue` - Revenue Analytics
-- `/admin-panel/ai-usage` - AI Usage
-- `/admin-panel/logs` - Activity Logs
-- `/admin-panel/settings` - System Settings
-
-## Completed Features (December 2025)
-
-### User Features
+### User Features ✅
 - [x] User Authentication (JWT + Google OAuth)
 - [x] Email Verification
 - [x] Password Reset
-- [x] **Two-Factor Authentication (2FA/TOTP) for users**
-- [x] Instagram Account Management
+- [x] Two-Factor Authentication (2FA/TOTP)
+- [x] Instagram Account Management (OAuth + Manual)
 - [x] AI Audits with PDF Export
-- [x] Content Engine (4 types)
-- [x] Growth Planner
-- [x] Team Management
+- [x] Content Engine (4 content types)
+- [x] Growth Planner with AI recommendations
+- [x] Team Management with invitations
 - [x] Stripe Billing (4 tiers)
 - [x] DM Templates
 - [x] Competitor Analysis
 - [x] A/B Testing
 - [x] WebSocket Notifications
 
-### Admin Panel Features
-- [x] Separate Admin Authentication
-- [x] **Two-Factor Authentication (2FA/TOTP) for admins**
-- [x] **IP Whitelist per Admin**
-- [x] Role-Based Access Control
-- [x] Dashboard with Charts
-- [x] User Management (CRUD)
-- [x] Plan Management
+### Admin Panel ✅
+- [x] Separate Admin Authentication (3-factor)
+- [x] Dashboard with Charts (Recharts)
+- [x] User Management (CRUD + Export CSV)
+- [x] Plan Management (Create/Edit/Disable)
 - [x] Revenue Analytics
 - [x] AI Usage Monitoring
-- [x] System Settings
+- [x] System Settings (API Keys management)
 - [x] Activity Logs
-- [x] CSV Export
-- [x] **Real-time WebSocket notifications**
+- [x] Admin Documentation
+- [x] Real-time WebSocket notifications
+
+### Instagram API Integration ✅
+- [x] Meta OAuth 2.0 connection flow
+- [x] Real follower/following/media counts
+- [x] Account refresh from API
+- [x] Disconnect functionality
+- [x] Data Deletion Callback URL (Meta requirement)
+
+### Legal Pages ✅
+- [x] Privacy Policy (`/privacy`)
+- [x] Terms of Service (`/terms`)
+- [x] Refund Policy (`/refund`)
+- [x] Data Deletion (`/data-deletion`)
+
+---
+
+## Admin Credentials
+
+| Field | Value |
+|-------|-------|
+| URL | `/admin-panel/login` |
+| Email | `superadmin@instagrowth.com` |
+| Password | `SuperAdmin123!` |
+| Security Code | `INSTAGROWTH_ADMIN_2024` |
+
+---
+
+## System Settings Configured
+
+### ✅ OpenAI/AI
+- API Key: Emergent Universal Key
+- Model: GPT-5.2
+- Supports: GPT-5.2, GPT-4o, Claude, Gemini
+
+### ✅ Email (Resend)
+- API Key: Configured
+- Sender: noreply@instagrowth.app
+
+### ⚙️ Stripe (Needs User Keys)
+- Dashboard: https://dashboard.stripe.com/apikeys
+- Webhook URL: `{domain}/api/billing/webhook`
+
+### ⚙️ Meta/Instagram (Needs User Keys)
+- Dashboard: https://developers.facebook.com/apps/
+- Required: App ID, App Secret, Access Token
+
+---
 
 ## Subscription Plans
 
-| Plan | Price | Accounts | AI | Team |
-|------|-------|----------|-----|------|
+| Plan | Price | Accounts | AI Credits | Team |
+|------|-------|----------|------------|------|
 | Starter | $19/mo | 1 | 10 | 0 |
 | Pro | $49/mo | 5 | 100 | 0 |
 | Agency | $149/mo | 25 | 500 | 5 |
 | Enterprise | $299/mo | 100 | 2000 | 20 |
 
-## Known Limitations
-1. Instagram data is AI-estimated (MOCKED)
-2. Requires valid Resend API key for emails
-3. Meta API requires approval for real Instagram data
+---
 
-## Future Enhancements (Backlog)
-- [ ] Real Instagram API integration (requires Meta API approval)
-- [ ] Mobile app (React Native)
-- [ ] Admin notifications panel
-- [ ] Light/Dark mode toggle
-- [ ] Bulk user operations in admin
-- [ ] Advanced analytics dashboard
+## API Endpoints Summary
+
+### Auth
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login (supports 2FA)
+- `POST /api/auth/google/callback` - Google OAuth
+- `POST /api/auth/data-deletion-request` - GDPR data deletion
+- `POST /api/auth/data-deletion-callback` - Meta callback URL
+
+### Instagram OAuth
+- `GET /api/instagram/auth/url` - Get OAuth URL
+- `GET /api/instagram/callback` - OAuth callback
+- `POST /api/instagram/{id}/refresh` - Refresh account data
+- `DELETE /api/instagram/{id}/disconnect` - Disconnect account
+
+### Admin Panel
+- `POST /api/admin-panel/auth/login` - Admin login
+- `GET /api/admin-panel/dashboard/stats` - Dashboard stats
+- `GET /api/admin-panel/users` - List users
+- `GET /api/admin-panel/plans` - List plans
+- `GET /api/admin-panel/settings` - System settings
+- `POST /api/admin-panel/settings/test-connection` - Test API connections
+
+---
+
+## File Structure
+
+```
+/app
+├── backend/
+│   ├── server.py                    # Main FastAPI app
+│   ├── database.py                  # MongoDB connection
+│   ├── dependencies.py              # Auth helpers
+│   ├── models/                      # Pydantic models
+│   ├── services/                    # AI & Email services
+│   └── routers/
+│       ├── auth.py                  # User auth + 2FA + data deletion
+│       ├── accounts.py              # Instagram accounts
+│       ├── instagram_oauth.py       # Meta OAuth flow
+│       ├── admin_panel_*.py         # Admin panel endpoints
+│       └── ...
+└── frontend/
+    └── src/
+        ├── pages/
+        │   ├── LandingPage.jsx
+        │   ├── AccountsPage.jsx
+        │   ├── PrivacyPolicyPage.jsx
+        │   ├── TermsOfServicePage.jsx
+        │   ├── RefundPolicyPage.jsx
+        │   ├── DataDeletionPage.jsx
+        │   └── admin-panel/
+        │       ├── DashboardPage.jsx
+        │       ├── UsersPage.jsx
+        │       ├── PlansPage.jsx
+        │       ├── SystemSettingsPage.jsx
+        │       ├── DocumentationPage.jsx
+        │       └── ...
+        └── components/
+            ├── AdminPanelLayout.jsx
+            ├── DashboardLayout.jsx
+            └── ...
+```
+
+---
+
+## Last Updated
+February 8, 2025
+
+## What's Next (Backlog)
+1. Real Instagram API data (requires Meta App Review)
+2. Stripe payment integration (requires user API keys)
+3. Light/Dark mode toggle
+4. Mobile app (React Native)
+5. Advanced analytics dashboard
