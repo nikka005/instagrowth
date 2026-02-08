@@ -351,6 +351,14 @@ function AppRouter({ auth }) {
         }
       />
       <Route
+        path="/help"
+        element={
+          <ProtectedRoute auth={auth}>
+            <HelpCenterPage auth={auth} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin"
         element={<AdminPage auth={auth} />}
       />
