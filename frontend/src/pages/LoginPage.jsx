@@ -135,6 +135,11 @@ const LoginPage = ({ auth }) => {
               Sign up
             </Link>
           </p>
+          <p className="mt-2 text-center">
+            <Link to="/forgot-password" className="text-sm text-white/40 hover:text-white/60">
+              Forgot password?
+            </Link>
+          </p>
         </motion.div>
       </div>
 
