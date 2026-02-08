@@ -343,19 +343,43 @@ async def send_automated_email(email_type: str, recipient_email: str, data: dict
     html = template_config["template"].format(**data)
     
     try:
-        await send_email(recipient_email, subject, html)
+        result = await send_email(recipient_email, subject, html)
         
-        # Log the email
-        await db.email_logs.insert_one({
-            "email_id": f"EMAIL-{uuid.uuid4().hex[:12]}",
-            "type": email_type,
-            "recipient": recipient_email,
-            "subject": subject,
-            "status": "sent",
-            "sent_at": datetime.now(timezone.utc).isoformat()
-        })
-        
-        return True
+        # Check if email was actually sent
+        if result.get("status") == "success":
+            await db.email_logs.insert_one({
+                "email_id": f"EMAIL-{uuid.uuid4().hex[:12]}",
+                "type": email_type,
+                "recipient": recipient_email,
+                "subject": subject,
+                "status": "sent",
+                "resend_id": result.get("email_id"),
+                "sent_at": datetime.now(timezone.utc).isoformat()
+            })
+            return True
+        elif result.get("status") == "skipped":
+            await db.email_logs.insert_one({
+                "email_id": f"EMAIL-{uuid.uuid4().hex[:12]}",
+                "type": email_type,
+                "recipient": recipient_email,
+                "subject": subject,
+                "status": "skipped",
+                "error": result.get("message"),
+                "attempted_at": datetime.now(timezone.utc).isoformat()
+            })
+            return False
+        else:
+            # Status is "error"
+            await db.email_logs.insert_one({
+                "email_id": f"EMAIL-{uuid.uuid4().hex[:12]}",
+                "type": email_type,
+                "recipient": recipient_email,
+                "subject": subject,
+                "status": "failed",
+                "error": result.get("message"),
+                "attempted_at": datetime.now(timezone.utc).isoformat()
+            })
+            return False
     except Exception as e:
         # Log failure
         await db.email_logs.insert_one({
