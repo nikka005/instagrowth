@@ -23,7 +23,7 @@ load_dotenv(ROOT_DIR / '.env')
 from routers import (
     auth, accounts, audits, content, growth, 
     teams, dm_templates, competitors, ab_testing,
-    notifications, billing, admin, websocket
+    notifications, billing, admin, admin_auth, websocket
 )
 from database import get_database
 
