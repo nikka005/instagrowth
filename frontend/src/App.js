@@ -218,6 +218,20 @@ function AppRouter({ auth }) {
       <Route path="/refund" element={<RefundPolicyPage />} />
       <Route path="/data-deletion" element={<DataDeletionPage />} />
       
+      {/* Onboarding */}
+      <Route path="/onboarding" element={
+        <ProtectedRoute auth={auth}>
+          <OnboardingPage auth={auth} />
+        </ProtectedRoute>
+      } />
+      
+      {/* Support */}
+      <Route path="/support" element={
+        <ProtectedRoute auth={auth}>
+          <SupportPage auth={auth} />
+        </ProtectedRoute>
+      } />
+      
       <Route path="/accept-invite" element={
         <ProtectedRoute auth={auth}>
           <TeamPage auth={auth} />
