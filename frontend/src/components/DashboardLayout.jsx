@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, Instagram, BarChart3, FileText, Calendar,
   CreditCard, Settings, LogOut, Menu, X, ChevronDown, Bell,
-  Sparkles, Users, MessageSquare, FlaskConical, Target
+  Sparkles, Users, MessageSquare, FlaskConical, Target, HelpCircle
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
@@ -30,16 +30,17 @@ const DashboardLayout = ({ children, auth }) => {
     { icon: <Target className="w-5 h-5" />, label: "Competitors", path: "/competitors" },
     { icon: <FlaskConical className="w-5 h-5" />, label: "A/B Testing", path: "/ab-testing" },
     { icon: <CreditCard className="w-5 h-5" />, label: "Billing", path: "/billing" },
+    { icon: <HelpCircle className="w-5 h-5" />, label: "Support", path: "/support" },
     { icon: <Settings className="w-5 h-5" />, label: "Settings", path: "/settings" },
   ];
 
   // Build navigation items based on user role
   const navItems = [
-    ...baseNavItems.slice(0, 9),
+    ...baseNavItems.slice(0, 10),
     ...(auth.user?.role === "agency" || auth.user?.role === "enterprise" || auth.user?.role === "admin" 
       ? [{ icon: <Users className="w-5 h-5" />, label: "Team", path: "/team" }] 
       : []),
-    baseNavItems[9], // Settings
+    baseNavItems[10], // Settings
     ...(auth.user?.role === "admin" 
       ? [{ icon: <Users className="w-5 h-5" />, label: "Admin", path: "/admin" }] 
       : [])
