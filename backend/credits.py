@@ -50,7 +50,7 @@ async def get_user_credits(user_id: str) -> dict:
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.ai_credits.insert_one(credits)
-        del credits["_id"] if "_id" in credits else None
+        credits.pop("_id", None)
     
     return credits
 
