@@ -246,3 +246,105 @@ async def logout(request: Request, response: Response):
         await db.user_sessions.delete_one({"session_token": session_token})
     response.delete_cookie(key="session_token", path="/")
     return {"message": "Logged out"}
+
+
+# ==================== DATA DELETION ====================
+
+from pydantic import BaseModel
+
+class DataDeletionRequest(BaseModel):
+    email: str
+
+@router.post("/data-deletion-request")
+async def request_data_deletion(data: DataDeletionRequest):
+    """Request deletion of all user data"""
+    db = get_database()
+    deletion_id = f"DEL-{uuid.uuid4().hex[:12].upper()}"
+    
+    # Create deletion request record
+    deletion_doc = {
+        "deletion_id": deletion_id,
+        "email": data.email,
+        "status": "pending",
+        "requested_at": datetime.now(timezone.utc).isoformat(),
+        "scheduled_deletion": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    }
+    await db.data_deletion_requests.insert_one(deletion_doc)
+    
+    # Send confirmation email
+    try:
+        email_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 30px; border-radius: 12px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Data Deletion Request</h1>
+            </div>
+            <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
+                <p>We received a request to delete all data associated with this email address from InstaGrowth OS.</p>
+                <div style="background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #666;">Confirmation ID:</p>
+                    <p style="margin: 10px 0 0 0; font-size: 24px; font-weight: bold; color: #333;">{deletion_id}</p>
+                </div>
+                <p>Your data will be permanently deleted within 30 days.</p>
+                <p style="font-size: 14px; color: #666;">If you did not request this, please contact support immediately.</p>
+            </div>
+        </div>
+        """
+        from services import send_email
+        await send_email(data.email, "Data Deletion Request Confirmed", email_html)
+    except:
+        pass  # Don't fail if email fails
+    
+    return {"deletion_id": deletion_id, "message": "Data deletion request submitted"}
+
+@router.post("/data-deletion-callback")
+async def instagram_data_deletion_callback(request: Request):
+    """Meta/Instagram Data Deletion Callback URL"""
+    import hmac
+    import hashlib
+    import base64
+    import json
+    
+    db = get_database()
+    
+    # Get the signed request from Meta
+    body = await request.body()
+    form_data = dict(item.split("=") for item in body.decode().split("&"))
+    signed_request = form_data.get("signed_request", "")
+    
+    if not signed_request:
+        raise HTTPException(status_code=400, detail="Missing signed_request")
+    
+    # Parse signed request
+    try:
+        encoded_sig, payload = signed_request.split(".", 1)
+        # Decode payload
+        payload_data = json.loads(base64.urlsafe_b64decode(payload + "=="))
+        user_id = payload_data.get("user_id")
+    except:
+        raise HTTPException(status_code=400, detail="Invalid signed_request")
+    
+    # Create deletion record
+    deletion_id = f"META-{uuid.uuid4().hex[:12].upper()}"
+    
+    deletion_doc = {
+        "deletion_id": deletion_id,
+        "meta_user_id": user_id,
+        "source": "meta_callback",
+        "status": "pending",
+        "requested_at": datetime.now(timezone.utc).isoformat(),
+        "scheduled_deletion": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    }
+    await db.data_deletion_requests.insert_one(deletion_doc)
+    
+    # Remove Instagram tokens for this user
+    await db.instagram_accounts.update_many(
+        {"instagram_id": str(user_id)},
+        {"$set": {"access_token": None, "connection_status": "disconnected"}}
+    )
+    
+    # Return response as required by Meta
+    origin = request.headers.get("origin", "https://growth-admin-staging.preview.emergentagent.com")
+    return {
+        "url": f"{origin}/data-deletion?id={deletion_id}",
+        "confirmation_code": deletion_id
+    }
