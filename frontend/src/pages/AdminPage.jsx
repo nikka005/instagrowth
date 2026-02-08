@@ -50,6 +50,10 @@ const AdminPage = ({ auth }) => {
           fetchStats(adminToken);
           fetchUsers(adminToken);
           return;
+        } else {
+          // Invalid token - clear it
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_user");
         }
       }
       
@@ -62,9 +66,11 @@ const AdminPage = ({ auth }) => {
       }
       
       // Not authenticated as admin - redirect to admin login
+      setLoading(false);
       navigate("/admin-login");
     } catch (error) {
       console.error("Admin verification failed:", error);
+      setLoading(false);
       navigate("/admin-login");
     }
   };
