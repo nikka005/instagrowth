@@ -36,6 +36,7 @@ import AdminAIUsagePage from "./pages/admin-panel/AIUsagePage";
 import AdminLogsPage from "./pages/admin-panel/LogsPage";
 import AdminSystemSettingsPage from "./pages/admin-panel/SystemSettingsPage";
 import AdminDocumentationPage from "./pages/admin-panel/DocumentationPage";
+import AdminTicketsPage from "./pages/admin-panel/TicketsPage";
 
 // Legal Pages
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
