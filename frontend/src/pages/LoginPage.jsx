@@ -107,43 +107,81 @@ const LoginPage = ({ auth }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <Label htmlFor="email" className="text-white/70 mb-2 block">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 pl-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-white/30 focus:border-indigo-500"
-                  required
-                  data-testid="login-email-input"
-                />
-              </div>
-            </div>
+            {!requires2FA ? (
+              <>
+                <div>
+                  <Label htmlFor="email" className="text-white/70 mb-2 block">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-12 pl-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-white/30 focus:border-indigo-500"
+                      required
+                      data-testid="login-email-input"
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <Label htmlFor="password" className="text-white/70 mb-2 block">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 pl-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-white/30 focus:border-indigo-500"
-                  required
-                  data-testid="login-password-input"
-                />
+                <div>
+                  <Label htmlFor="password" className="text-white/70 mb-2 block">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-12 pl-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-white/30 focus:border-indigo-500"
+                      required
+                      data-testid="login-password-input"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-xl">
+                  <Shield className="w-5 h-5 text-indigo-400" />
+                  <p className="text-indigo-300 text-sm">Two-factor authentication is required</p>
+                </div>
+                
+                <div>
+                  <Label htmlFor="totp" className="text-white/70 mb-2 block">Authentication Code</Label>
+                  <Input
+                    id="totp"
+                    type="text"
+                    placeholder="000000"
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="h-12 text-center text-2xl tracking-widest bg-white/5 border-white/10 rounded-xl text-white placeholder:text-white/30 focus:border-indigo-500"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    data-testid="login-2fa-input"
+                  />
+                  <p className="text-white/40 text-xs mt-2 text-center">
+                    Enter the 6-digit code from your authenticator app
+                  </p>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => { setRequires2FA(false); setTotpCode(''); }}
+                  className="text-white/50 hover:text-white/70 text-sm underline"
+                >
+                  Use a different account
+                </button>
               </div>
-            </div>
+            )}
 
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || (requires2FA && totpCode.length !== 6)}
               className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all"
               data-testid="login-submit-btn"
             >
@@ -151,7 +189,7 @@ const LoginPage = ({ auth }) => {
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  Sign In
+                  {requires2FA ? 'Verify' : 'Sign In'}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </>
               )}
