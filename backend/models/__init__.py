@@ -42,6 +42,7 @@ class UserResponse(BaseModel):
     email_verified: bool = False
     team_id: Optional[str] = None
     extra_accounts: int = 0
+    onboarding_completed: bool = False
 
 # Password Reset Models
 class PasswordResetRequest(BaseModel):
