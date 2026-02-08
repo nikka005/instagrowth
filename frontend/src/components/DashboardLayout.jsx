@@ -29,6 +29,7 @@ const DashboardLayout = ({ children, auth }) => {
     { icon: <MessageSquare className="w-5 h-5" />, label: "DM Templates", path: "/dm-templates" },
     { icon: <Target className="w-5 h-5" />, label: "Competitors", path: "/competitors" },
     { icon: <FlaskConical className="w-5 h-5" />, label: "A/B Testing", path: "/ab-testing" },
+    { icon: <Gift className="w-5 h-5" />, label: "Referrals", path: "/referrals" },
     { icon: <CreditCard className="w-5 h-5" />, label: "Billing", path: "/billing" },
     { icon: <HelpCircle className="w-5 h-5" />, label: "Support", path: "/support" },
     { icon: <Settings className="w-5 h-5" />, label: "Settings", path: "/settings" },
