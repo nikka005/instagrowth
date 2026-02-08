@@ -32,6 +32,7 @@ const DashboardLayout = ({ children, auth }) => {
     { icon: <Gift className="w-5 h-5" />, label: "Referrals", path: "/referrals" },
     { icon: <CreditCard className="w-5 h-5" />, label: "Billing", path: "/billing" },
     { icon: <HelpCircle className="w-5 h-5" />, label: "Support", path: "/support" },
+    { icon: <BookOpen className="w-5 h-5" />, label: "Help Center", path: "/help" },
     { icon: <Settings className="w-5 h-5" />, label: "Settings", path: "/settings" },
   ];
 
