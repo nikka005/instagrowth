@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, CreditCard, Package, Instagram, 
   Cpu, DollarSign, UsersRound, Settings, FileText, LogOut,
-  Menu, X, Shield, Bell, ChevronDown, User, TrendingUp, AlertTriangle
+  Menu, X, Shield, Bell, ChevronDown, User, TrendingUp, AlertTriangle, Book
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,6 +32,7 @@ const AdminPanelLayout = ({ children }) => {
     { path: '/admin-panel/team', icon: UsersRound, label: 'Team Management', permission: '*' },
     { path: '/admin-panel/settings', icon: Settings, label: 'System Settings', permission: '*' },
     { path: '/admin-panel/logs', icon: FileText, label: 'Logs', permission: 'logs' },
+    { path: '/admin-panel/docs', icon: Book, label: 'Documentation', permission: '*' },
   ];
 
   useEffect(() => {
