@@ -275,11 +275,7 @@ function AppRouter({ auth }) {
       />
       <Route
         path="/admin"
-        element={
-          <ProtectedRoute auth={auth}>
-            <AdminPage auth={auth} />
-          </ProtectedRoute>
-        }
+        element={<AdminPage auth={auth} />}
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
