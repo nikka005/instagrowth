@@ -131,6 +131,23 @@ async def use_credits(user_id: str, feature: str, amount: int = None) -> tuple[b
     
     # Get updated credits
     updated_credits = await get_user_credits(user_id)
+    
+    # Check if low credits alert needed (below 20%)
+    if updated_credits["total_credits"] > 0:
+        percentage = (updated_credits["remaining_credits"] / updated_credits["total_credits"]) * 100
+        if percentage < 20 and updated_credits["remaining_credits"] > 0:
+            try:
+                from routers.email_automation import trigger_low_credits_email
+                reset_date = updated_credits.get("reset_date", "1st of next month")
+                await trigger_low_credits_email(
+                    user_id,
+                    updated_credits["remaining_credits"],
+                    updated_credits["total_credits"],
+                    reset_date[:10] if isinstance(reset_date, str) else str(reset_date)
+                )
+            except Exception:
+                pass  # Don't fail if email fails
+    
     return True, updated_credits
 
 async def add_extra_credits(user_id: str, amount: int, reason: str = "purchase") -> dict:
