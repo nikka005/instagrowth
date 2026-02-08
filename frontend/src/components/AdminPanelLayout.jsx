@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, CreditCard, Package, Instagram, 
   Cpu, DollarSign, UsersRound, Settings, FileText, LogOut,
-  Menu, X, Shield, Bell, ChevronDown, User, TrendingUp, AlertTriangle, Book, MessageSquare
+  Menu, X, Shield, Bell, ChevronDown, User, TrendingUp, AlertTriangle, Book, MessageSquare, Gift, Megaphone
 } from 'lucide-react';
 import { toast } from 'sonner';
 
