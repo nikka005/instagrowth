@@ -366,6 +366,7 @@ function AppRouter({ auth }) {
       <Route path="/admin-panel/docs" element={<AdminPanelLayout><AdminDocumentationPage /></AdminPanelLayout>} />
       <Route path="/admin-panel/referrals" element={<AdminPanelLayout><AdminReferralsPage /></AdminPanelLayout>} />
       <Route path="/admin-panel/announcements" element={<AdminPanelLayout><AdminAnnouncementsPage /></AdminPanelLayout>} />
+      <Route path="/admin-panel/email-automation" element={<AdminPanelLayout><EmailAutomationPage /></AdminPanelLayout>} />
       
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
