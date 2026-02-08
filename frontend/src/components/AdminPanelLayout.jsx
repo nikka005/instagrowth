@@ -32,6 +32,7 @@ const AdminPanelLayout = ({ children }) => {
     { path: '/admin-panel/tickets', icon: MessageSquare, label: 'Support Tickets', permission: '*' },
     { path: '/admin-panel/referrals', icon: Gift, label: 'Referrals', permission: '*' },
     { path: '/admin-panel/announcements', icon: Megaphone, label: 'Announcements', permission: '*' },
+    { path: '/admin-panel/email-automation', icon: Mail, label: 'Email Automation', permission: '*' },
     { path: '/admin-panel/team', icon: UsersRound, label: 'Team Management', permission: '*' },
     { path: '/admin-panel/settings', icon: Settings, label: 'System Settings', permission: '*' },
     { path: '/admin-panel/logs', icon: FileText, label: 'Logs', permission: 'logs' },
