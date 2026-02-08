@@ -388,12 +388,13 @@ const LandingPage = () => {
               <span className="font-display font-bold text-lg">InstaGrowth OS</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-white/50">
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms</a>
-              <a href="#" className="hover:text-white transition-colors">Contact</a>
+              <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link to="/refund" className="hover:text-white transition-colors">Refund Policy</Link>
+              <Link to="/data-deletion" className="hover:text-white transition-colors">Data Deletion</Link>
             </div>
             <div className="text-sm text-white/30">
-              © 2024 InstaGrowth OS. All rights reserved.
+              © 2025 InstaGrowth OS. All rights reserved.
             </div>
           </div>
         </div>
