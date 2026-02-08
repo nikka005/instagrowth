@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, Instagram, BarChart3, FileText, Calendar,
   CreditCard, Settings, LogOut, Menu, X, ChevronDown, Bell,
-  Sparkles, Users, MessageSquare, FlaskConical, Target, HelpCircle
+  Sparkles, Users, MessageSquare, FlaskConical, Target, HelpCircle, Gift
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
