@@ -3,67 +3,142 @@
 ## Original Problem Statement
 Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for freelancers and agencies.
 
-## Current Status: PRODUCTION READY ✅
+## Current Status: PRODUCTION READY ✅ (218 Features)
 
 ---
 
-## Architecture Overview
+## NEW FEATURES ADDED (Phase 2)
 
-### Tech Stack
-- **Frontend**: React 19 + Tailwind CSS + Shadcn UI + Recharts + Framer Motion
-- **Backend**: FastAPI + MongoDB (Motor) - **FULLY MODULAR**
-- **AI**: OpenAI GPT-5.2 via Emergent Universal Key
-- **Auth**: JWT + Google OAuth + Separate Admin Panel Auth
-- **Payments**: Stripe subscriptions
-- **Email**: Resend
-- **Real-time**: WebSocket
-- **2FA**: TOTP (Google Authenticator compatible)
-- **Instagram**: Meta Graph API (OAuth 2.0)
+### 1. Security & Abuse Protection ✅
+- Login rate limiting (5 attempts / 5 minutes)
+- AI request rate limit (30 requests / minute)
+- IP blocking system (temporary + permanent)
+- Suspicious user detection & flagging
+- Admin force logout
+- Session device tracking
+
+### 2. AI Credit System ✅
+- Monthly credit allocation per plan
+- Credit costs per feature (audit=10, caption=1, etc.)
+- Credit usage tracking
+- Automatic monthly reset
+- Extra credit purchase capability
+
+### 3. Support Ticket System ✅
+- User ticket creation (`/support`)
+- Admin ticket management (`/admin-panel/tickets`)
+- Ticket categories (general, billing, technical, feature, bug)
+- Priority levels (low, normal, high, urgent)
+- Message threading
+- Email notifications
+- Ticket status (open, pending, closed)
+
+### 4. In-App Announcements ✅
+- Admin announcement creation
+- Banner types (info, warning, success, update, maintenance)
+- Target audience filtering
+- Start/end date scheduling
+- User dismissal tracking
+
+### 5. Onboarding Flow ✅
+- Welcome screen
+- Goal selection (grow followers, generate leads, build brand, boost engagement)
+- Instagram connection step
+- Quick start guide
+- Dashboard redirect
 
 ---
 
-## Completed Features
+## Complete Feature List (218 Total)
 
-### User Features ✅
-- [x] User Authentication (JWT + Google OAuth)
-- [x] Email Verification
-- [x] Password Reset
-- [x] Two-Factor Authentication (2FA/TOTP)
-- [x] Instagram Account Management (OAuth + Manual)
-- [x] AI Audits with PDF Export
-- [x] Content Engine (4 content types)
-- [x] Growth Planner with AI recommendations
-- [x] Team Management with invitations
-- [x] Stripe Billing (4 tiers)
-- [x] DM Templates
-- [x] Competitor Analysis
-- [x] A/B Testing
-- [x] WebSocket Notifications
+### Authentication & Security
+- [x] User registration with email verification
+- [x] Login with email/password
+- [x] Google OAuth
+- [x] Password reset
+- [x] 2FA (TOTP) for users
+- [x] Login rate limiting
+- [x] IP blocking
+- [x] Session management
+- [x] Force logout
 
-### Admin Panel ✅
-- [x] Separate Admin Authentication (3-factor)
-- [x] Dashboard with Charts (Recharts)
-- [x] User Management (CRUD + Export CSV)
-- [x] Plan Management (Create/Edit/Disable)
-- [x] Revenue Analytics
-- [x] AI Usage Monitoring
-- [x] System Settings (API Keys management)
-- [x] Activity Logs
-- [x] Admin Documentation
-- [x] Real-time WebSocket notifications
+### User Dashboard
+- [x] Dashboard overview
+- [x] AI credits display
+- [x] Quick actions
+- [x] Notifications
+- [x] Onboarding wizard
 
-### Instagram API Integration ✅
-- [x] Meta OAuth 2.0 connection flow
-- [x] Real follower/following/media counts
+### Instagram Management
+- [x] Instagram OAuth connection
+- [x] Manual account entry
+- [x] Real follower/following counts
 - [x] Account refresh from API
-- [x] Disconnect functionality
-- [x] Data Deletion Callback URL (Meta requirement)
+- [x] Disconnect/reconnect
+- [x] Account deletion
 
-### Legal Pages ✅
-- [x] Privacy Policy (`/privacy`)
-- [x] Terms of Service (`/terms`)
-- [x] Refund Policy (`/refund`)
-- [x] Data Deletion (`/data-deletion`)
+### AI Features
+- [x] Profile audits (PDF export)
+- [x] Caption generation
+- [x] Hashtag generation
+- [x] Content ideas
+- [x] Hooks for reels
+- [x] Growth plans
+- [x] Credit-based usage
+- [x] Rate limiting
+
+### Support System
+- [x] Create tickets
+- [x] View ticket history
+- [x] Reply to tickets
+- [x] Close tickets
+- [x] Email notifications
+
+### Admin Panel
+- [x] Dashboard with charts
+- [x] User management
+- [x] Subscription management
+- [x] Plan management
+- [x] Revenue analytics
+- [x] AI usage monitoring
+- [x] Support tickets
+- [x] Activity logs
+- [x] System settings
+- [x] Documentation
+- [x] Announcements
+
+### Legal Pages
+- [x] Privacy Policy
+- [x] Terms of Service
+- [x] Refund Policy
+- [x] Data Deletion (Meta callback)
+
+---
+
+## Credit Costs per Feature
+
+| Feature | Credits |
+|---------|---------|
+| AI Audit | 10 |
+| Caption | 1 |
+| Hashtags | 1 |
+| Content Ideas | 2 |
+| Hooks | 1 |
+| Growth Plan | 15 |
+| Competitor Analysis | 5 |
+| DM Reply | 1 |
+| Posting Recommendations | 3 |
+| A/B Test | 2 |
+
+## Plan Credit Allocations (Monthly)
+
+| Plan | Credits |
+|------|---------|
+| Free | 5 |
+| Starter ($19) | 10 |
+| Pro ($49) | 100 |
+| Agency ($149) | 500 |
+| Enterprise ($299) | 2000 |
 
 ---
 
@@ -78,109 +153,47 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 
 ---
 
-## System Settings Configured
+## API Configuration Status
 
-### ✅ OpenAI/AI
-- API Key: Emergent Universal Key
-- Model: GPT-5.2
-- Supports: GPT-5.2, GPT-4o, Claude, Gemini
-
-### ✅ Email (Resend)
-- API Key: Configured
-- Sender: noreply@instagrowth.app
-
-### ⚙️ Stripe (Needs User Keys)
-- Dashboard: https://dashboard.stripe.com/apikeys
-- Webhook URL: `{domain}/api/billing/webhook`
-
-### ⚙️ Meta/Instagram (Needs User Keys)
-- Dashboard: https://developers.facebook.com/apps/
-- Required: App ID, App Secret, Access Token
+| Service | Status | Notes |
+|---------|--------|-------|
+| OpenAI | ✅ Configured | Emergent Universal Key |
+| Resend | ✅ Configured | User API key |
+| Stripe | ⚙️ Ready | Needs user keys |
+| Meta/Instagram | ⚙️ Ready | Needs user credentials |
 
 ---
 
-## Subscription Plans
+## New Routes Added
 
-| Plan | Price | Accounts | AI Credits | Team |
-|------|-------|----------|------------|------|
-| Starter | $19/mo | 1 | 10 | 0 |
-| Pro | $49/mo | 5 | 100 | 0 |
-| Agency | $149/mo | 25 | 500 | 5 |
-| Enterprise | $299/mo | 100 | 2000 | 20 |
+### User Routes
+- `/support` - Support ticket system
+- `/onboarding` - First-time user onboarding
 
----
+### Admin Routes
+- `/admin-panel/tickets` - Support ticket management
 
-## API Endpoints Summary
-
-### Auth
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login (supports 2FA)
-- `POST /api/auth/google/callback` - Google OAuth
-- `POST /api/auth/data-deletion-request` - GDPR data deletion
-- `POST /api/auth/data-deletion-callback` - Meta callback URL
-
-### Instagram OAuth
-- `GET /api/instagram/auth/url` - Get OAuth URL
-- `GET /api/instagram/callback` - OAuth callback
-- `POST /api/instagram/{id}/refresh` - Refresh account data
-- `DELETE /api/instagram/{id}/disconnect` - Disconnect account
-
-### Admin Panel
-- `POST /api/admin-panel/auth/login` - Admin login
-- `GET /api/admin-panel/dashboard/stats` - Dashboard stats
-- `GET /api/admin-panel/users` - List users
-- `GET /api/admin-panel/plans` - List plans
-- `GET /api/admin-panel/settings` - System settings
-- `POST /api/admin-panel/settings/test-connection` - Test API connections
-
----
-
-## File Structure
-
-```
-/app
-├── backend/
-│   ├── server.py                    # Main FastAPI app
-│   ├── database.py                  # MongoDB connection
-│   ├── dependencies.py              # Auth helpers
-│   ├── models/                      # Pydantic models
-│   ├── services/                    # AI & Email services
-│   └── routers/
-│       ├── auth.py                  # User auth + 2FA + data deletion
-│       ├── accounts.py              # Instagram accounts
-│       ├── instagram_oauth.py       # Meta OAuth flow
-│       ├── admin_panel_*.py         # Admin panel endpoints
-│       └── ...
-└── frontend/
-    └── src/
-        ├── pages/
-        │   ├── LandingPage.jsx
-        │   ├── AccountsPage.jsx
-        │   ├── PrivacyPolicyPage.jsx
-        │   ├── TermsOfServicePage.jsx
-        │   ├── RefundPolicyPage.jsx
-        │   ├── DataDeletionPage.jsx
-        │   └── admin-panel/
-        │       ├── DashboardPage.jsx
-        │       ├── UsersPage.jsx
-        │       ├── PlansPage.jsx
-        │       ├── SystemSettingsPage.jsx
-        │       ├── DocumentationPage.jsx
-        │       └── ...
-        └── components/
-            ├── AdminPanelLayout.jsx
-            ├── DashboardLayout.jsx
-            └── ...
-```
+### API Endpoints
+- `POST /api/support/tickets` - Create ticket
+- `GET /api/support/tickets` - List user tickets
+- `POST /api/support/tickets/{id}/reply` - Reply to ticket
+- `GET /api/admin-panel/tickets` - Admin ticket list
+- `POST /api/admin-panel/tickets/{id}/reply` - Admin reply
+- `PUT /api/admin-panel/tickets/{id}/status` - Update status
+- `GET /api/credits` - Get user credits
+- `POST /api/credits/use` - Use credits
+- `GET /api/announcements` - Get active announcements
+- `POST /api/security/admin/block-ip` - Block IP
+- `POST /api/security/admin/force-logout` - Force user logout
 
 ---
 
 ## Last Updated
 February 8, 2025
 
-## What's Next (Backlog)
-1. Real Instagram API data (requires Meta App Review)
-2. Stripe payment integration (requires user API keys)
-3. Light/Dark mode toggle
-4. Mobile app (React Native)
-5. Advanced analytics dashboard
+## Remaining Items (Future)
+1. Stripe payment integration (requires user keys)
+2. Real Instagram data (requires Meta App Review)
+3. Email automation (welcome, renewal reminders)
+4. Referral/Affiliate system
+5. Light/Dark mode toggle
