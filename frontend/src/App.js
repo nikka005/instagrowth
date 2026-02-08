@@ -61,20 +61,29 @@ export const useAuth = () => {
     }
   };
 
-  const login = async (email, password) => {
-    const response = await fetch(`${API_URL}/api/auth/login`, {
+  const login = async (email, password, totpCode = null) => {
+    const url = totpCode 
+      ? `${API_URL}/api/auth/login?totp_code=${totpCode}`
+      : `${API_URL}/api/auth/login`;
+    
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ email, password }),
     });
     
+    const data = await response.json();
+    
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Login failed");
+      throw new Error(data.detail || "Login failed");
     }
     
-    const data = await response.json();
+    // Check if 2FA is required
+    if (data.requires_2fa) {
+      return data;
+    }
+    
     localStorage.setItem("token", data.token);
     setUser(data.user);
     return data;
