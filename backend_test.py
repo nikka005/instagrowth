@@ -334,6 +334,77 @@ class InstaGrowthAPITester:
         success, response = self.run_test("Get Growth Plan", "GET", f"/growth-plans/{self.test_plan_id}", 200)
         return success
 
+    def test_team_management(self):
+        """Test team management functionality (requires Agency+ plan)"""
+        if not hasattr(self, 'demo_token') or not self.demo_token:
+            self.log("⚠️ Skipping Team Management - No demo user token")
+            return True
+
+        # Temporarily use demo token for team tests (assuming demo user has agency role)
+        original_token = self.token
+        self.token = self.demo_token
+
+        # Test creating a team
+        data = {"name": f"Test Agency Team {int(time.time())}"}
+        success, response = self.run_test("Create Team", "POST", "/teams", 200, data)
+        if success and "team_id" in response:
+            self.test_team_id = response["team_id"]
+            self.log(f"   Created team: {response.get('name')} ({self.test_team_id})")
+
+        # Test listing teams
+        success2, response = self.run_test("List Teams", "GET", "/teams", 200)
+        if success2:
+            teams = response if isinstance(response, list) else []
+            self.log(f"   Found {len(teams)} teams")
+
+        # Test inviting a team member (if team exists)
+        success3 = True
+        if self.test_team_id:
+            invite_data = {
+                "email": f"invite_test_{int(time.time())}@example.com",
+                "role": "editor"
+            }
+            success3, response = self.run_test("Invite Team Member", "POST", f"/teams/{self.test_team_id}/invite", 200, invite_data)
+            if success3:
+                self.log(f"   Team invitation sent")
+
+        # Test getting team members
+        success4 = True
+        if self.test_team_id:
+            success4, response = self.run_test("Get Team Members", "GET", f"/teams/{self.test_team_id}/members", 200)
+            if success4:
+                members = response if isinstance(response, list) else []
+                self.log(f"   Team has {len(members)} members")
+
+        # Test white-label settings update
+        success5 = True
+        if self.test_team_id:
+            settings_data = {
+                "brand_color": "#FF5733",
+                "company_name": "Test Company"
+            }
+            success5, response = self.run_test("Update Team Settings", "PUT", f"/teams/{self.test_team_id}/settings", 200, settings_data)
+
+        # Restore original token
+        self.token = original_token
+        
+        return success and success2 and success3 and success4 and success5
+
+    def test_ai_metrics_estimation(self):
+        """Test AI-based Instagram metrics estimation during account creation"""
+        if not self.test_account_id:
+            self.log("⚠️ Skipping AI Metrics Test - No test account created")
+            return True
+
+        # Test refreshing AI metrics for an existing account
+        success, response = self.run_test("Refresh AI Metrics", "POST", f"/accounts/{self.test_account_id}/refresh-metrics", 200)
+        if success:
+            metrics = response if isinstance(response, dict) else {}
+            self.log(f"   AI Estimated Followers: {metrics.get('estimated_followers', 'N/A')}")
+            self.log(f"   AI Estimated Engagement Rate: {metrics.get('estimated_engagement_rate', 'N/A')}%")
+            self.log(f"   AI Growth Potential: {metrics.get('growth_potential', 'N/A')}")
+        return success
+
     def test_cleanup(self):
         """Clean up test data"""
         cleanup_success = True
