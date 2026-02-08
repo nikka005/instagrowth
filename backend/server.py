@@ -1874,7 +1874,8 @@ async def create_growth_plan(data: GrowthPlanRequest, user: User = Depends(get_c
     prompt = f"Create {data.duration}-day Instagram growth plan for {niche} niche."
     
     try:
-        ai_response = await generate_ai_content(prompt, system_message)
+        # Use longer timeout for growth plans as they generate more content
+        ai_response = await generate_ai_content(prompt, system_message, timeout_seconds=AI_TIMEOUT_LONG)
         import json
         cleaned = ai_response.strip()
         if cleaned.startswith("```json"):
@@ -1886,6 +1887,8 @@ async def create_growth_plan(data: GrowthPlanRequest, user: User = Depends(get_c
         
         plan_data = json.loads(cleaned.strip())
         daily_tasks = plan_data.get("daily_tasks", [])
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"AI Plan Error: {e}")
         daily_tasks = []
