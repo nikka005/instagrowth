@@ -9,6 +9,7 @@ from utils import hash_password, verify_password, create_token, create_verificat
 from services import send_email
 from database import get_database
 from dependencies import create_notification
+from routers.admin_websocket import notify_new_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
