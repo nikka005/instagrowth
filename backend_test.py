@@ -20,6 +20,9 @@ class InstaGrowthAPITester:
         self.test_audit_id = None
         self.test_content_id = None
         self.test_plan_id = None
+        self.test_team_id = None
+        self.demo_token = None
+        self.demo_user = None
         
         self.tests_run = 0
         self.tests_passed = 0
