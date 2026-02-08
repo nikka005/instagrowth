@@ -41,9 +41,9 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 | Agency | $149/mo | 25 | 500/mo | Yes |
 | Enterprise | $299/mo | 100 | 2000/mo | Yes |
 
-## What's Been Implemented (Jan 2026)
+## What's Been Implemented (Feb 2026)
 
-### Backend (FastAPI) v1.1.0
+### Backend (FastAPI) v1.2.0
 - [x] User registration and login with JWT
 - [x] Google OAuth integration via Emergent Auth
 - [x] Email verification flow (Resend integration)
@@ -59,6 +59,15 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - [x] Team management (create, invite, roles)
 - [x] Team settings (logo upload, brand color)
 - [x] Admin endpoints for user management
+- [x] **DM Templates** - Create, read, update, delete templates with variable extraction
+- [x] **Competitor Analysis** - AI-powered competitor insights and opportunities
+- [x] **A/B Testing** - Create tests, vote, determine winners
+- [x] **Posting Recommendations** - AI-based best time to post
+- [x] **Content Favorites** - Save/favorite content items
+- [x] **Notifications System** - Team invites, system alerts, plan upgrades
+- [x] **Rate Limiting** - Protect AI endpoints from abuse
+- [x] **CSV Export** - Export data for external analysis
+- [x] **One-Time Products** - Purchase individual reports and content packs
 
 ### Frontend (React)
 - [x] Landing page with hero, features, pricing, testimonials
@@ -76,40 +85,52 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - [x] Team Management page (Agency/Enterprise only)
 - [x] Admin page (user management, stats)
 - [x] Dark mode premium theme (indigo/purple)
+- [x] **DM Templates Page** - Manage auto-reply templates
+- [x] **Competitor Analysis Page** - Analyze competitor accounts
+- [x] **A/B Testing Page** - Test content variants
+
+### Testing Status (Feb 8, 2026)
+- Backend: 95.5% pass rate (21/22 tests)
+- Frontend: 100% pass rate
+- Test report: `/app/test_reports/iteration_3.json`
 
 ## Prioritized Backlog
 
 ### P0 - Critical (Next Sprint)
-- [ ] Rate limiting for AI endpoints
-- [ ] Resend API key configuration for production emails
+- [ ] Configure production Resend API key for live emails
+- [ ] Mobile responsive fixes for sidebar overlay
 
 ### P1 - High Priority
-- [ ] Content favorites/saved items
-- [ ] Scheduling recommendations based on niche
-- [ ] Notification system for team invites
+- [ ] Backend code refactoring - break down monolithic server.py into modules
+- [ ] Improve AI endpoint timeout handling for growth plans
+- [ ] Real Instagram API integration (when Meta API available)
 
 ### P2 - Medium Priority
-- [ ] Instagram API integration for real follower/engagement data (when Meta API available)
-- [ ] A/B testing for hooks and captions
 - [ ] Performance analytics dashboard
-- [ ] Export data to CSV
+- [ ] More detailed competitor metrics
+- [ ] Automated scheduling integration
+- [ ] Zapier integration
 
 ### P3 - Nice to Have
-- [ ] DM template library
-- [ ] Competitor analysis feature
 - [ ] Mobile app (React Native)
-- [ ] Zapier integration
+- [ ] Light mode toggle
+- [ ] Chrome extension for Instagram
 
 ## Next Tasks List
 1. Configure production Resend API key for emails
-2. Add rate limiting to AI endpoints
-3. Implement content favorites feature
-4. Add notification system for team invites
-5. Build scheduling recommendation engine
+2. Refactor server.py into modular structure using FastAPI APIRouter
+3. Fix mobile sidebar overlay z-index issue
+4. Add timeout handling for AI generation endpoints
+5. Enhance competitor analysis with more metrics
 
 ## Technical Notes
 - All AI calls use emergentintegrations library with EMERGENT_LLM_KEY
 - Email service uses Resend (needs production API key for live emails)
 - PDF generation uses ReportLab with white-label support
-- MongoDB collections: users, user_sessions, instagram_accounts, audits, content_items, growth_plans, payment_transactions, teams, team_members, password_resets
+- MongoDB collections: users, user_sessions, instagram_accounts, audits, content_items, growth_plans, payment_transactions, teams, team_members, password_resets, dm_templates, competitor_analyses, ab_tests, notifications, one_time_purchases
 - All API routes prefixed with /api
+- Instagram metrics are AI-estimated (MOCKED - not real Instagram API)
+
+## Known Issues
+1. Mobile menu overlay UI bug (P2) - z-index/state issue on smaller screens
+2. Flaky timeout on growth plan generation (P2) - long AI operations may timeout
