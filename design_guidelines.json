@@ -1,0 +1,157 @@
+{
+  "brand_identity": {
+    "name": "InstaGrowth OS",
+    "archetype": "The Performance Pro / Electric & Neon Hybrid",
+    "emotional_tone": "Premium, Secret Weapon, High-Performance, Exclusive",
+    "visual_style": "Dark Mode SaaS, Glassmorphism, Glowing Accents, Bento Grids"
+  },
+  "typography": {
+    "fonts": {
+      "display": {
+        "name": "Outfit",
+        "weights": ["500", "700", "900"],
+        "usage": "Headings, Hero Text, Big Numbers"
+      },
+      "body": {
+        "name": "Inter",
+        "weights": ["400", "500", "600"],
+        "usage": "Paragraphs, UI Labels, Data Tables"
+      },
+      "mono": {
+        "name": "JetBrains Mono",
+        "usage": "Code snippets, API keys, Technical details"
+      }
+    },
+    "scale": {
+      "h1": "text-5xl md:text-7xl font-bold tracking-tight leading-[1.1]",
+      "h2": "text-4xl md:text-5xl font-bold tracking-tight leading-tight",
+      "h3": "text-2xl md:text-3xl font-semibold tracking-tight",
+      "h4": "text-xl font-semibold tracking-wide",
+      "body_lg": "text-lg leading-relaxed text-muted-foreground",
+      "body_base": "text-base leading-normal text-muted-foreground",
+      "caption": "text-sm font-medium uppercase tracking-widest text-muted-foreground/70"
+    }
+  },
+  "colors": {
+    "palette": {
+      "base": {
+        "background": "#030305",
+        "surface": "#0F0F11",
+        "surface_highlight": "#18181B",
+        "border": "#27272A"
+      },
+      "primary": {
+        "main": "#6366F1",
+        "light": "#818CF8",
+        "dark": "#4F46E5",
+        "glow": "0 0 20px rgba(99, 102, 241, 0.5)"
+      },
+      "accent": {
+        "purple": "#A855F7",
+        "teal": "#14B8A6",
+        "rose": "#F43F5E"
+      },
+      "text": {
+        "primary": "#FFFFFF",
+        "secondary": "#A1A1AA",
+        "muted": "#52525B"
+      }
+    },
+    "gradients": {
+      "primary": "bg-gradient-to-r from-indigo-500 to-purple-500",
+      "surface_glass": "bg-black/40 backdrop-blur-xl border-white/10",
+      "text_gradient": "bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60",
+      "glow_border": "from-indigo-500/50 via-purple-500/50 to-indigo-500/50"
+    }
+  },
+  "layout_strategies": {
+    "spacing": {
+      "container_padding": "p-6 md:p-12 lg:p-16",
+      "section_gap": "gap-16 md:gap-32",
+      "item_gap": "gap-4 md:gap-8"
+    },
+    "grids": {
+      "bento_marketing": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+      "dashboard_dense": "grid grid-cols-1 md:grid-cols-12 gap-4",
+      "card_aspect_ratios": {
+        "square": "aspect-square",
+        "video": "aspect-video",
+        "portrait": "aspect-[3/4]"
+      }
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "h-11 px-8 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)]",
+      "secondary": "h-11 px-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium transition-all backdrop-blur-sm",
+      "ghost": "text-muted-foreground hover:text-white transition-colors"
+    },
+    "cards": {
+      "glass": "bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl",
+      "solid": "bg-[#0F0F11] border border-white/5 rounded-2xl",
+      "interactive": "group relative overflow-hidden bg-black/40 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all duration-300"
+    },
+    "inputs": {
+      "base": "h-12 bg-white/5 border-white/10 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 placeholder:text-muted-foreground/50 text-white"
+    },
+    "navigation": {
+      "marketing": "fixed top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-5xl z-50 h-14 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-6 flex items-center justify-between shadow-2xl",
+      "dashboard_sidebar": "w-64 border-r border-white/10 bg-[#030305] flex flex-col gap-2 p-4 h-screen sticky top-0"
+    }
+  },
+  "motion": {
+    "transitions": {
+      "default": "transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+      "slow": "transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
+    },
+    "animations": {
+      "fade_in": "animate-in fade-in zoom-in-95 duration-500",
+      "slide_up": "animate-in slide-in-from-bottom-8 fade-in duration-700",
+      "hover_lift": "hover:-translate-y-1 hover:shadow-lg transition-transform duration-300"
+    }
+  },
+  "images": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1704643770744-154e115d454d?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Abstract purple digital wave background",
+      "usage": "Hero section background with heavy overlay/blur"
+    },
+    "dashboard_user": {
+      "url": "https://images.unsplash.com/photo-1684488624316-774ea1824d97?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Man working on laptop in dark environment",
+      "usage": "Marketing section showing user workflow"
+    },
+    "content_creator": {
+      "url": "https://images.unsplash.com/photo-1762535120786-76238d9eeb0d?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Influencer recording video",
+      "usage": "Content Engine feature section"
+    },
+    "freelancer_lifestyle": {
+      "url": "https://images.unsplash.com/photo-1756260870627-bfcb8ce0af6b?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Freelancer in cafe",
+      "usage": "Social proof or benefits section"
+    }
+  },
+  "universal_guidelines": [
+    "Use 'Outfit' for all Headings and 'Inter' for Body.",
+    "Dark Mode is the DEFAULT and PRIMARY mode. Use white text on dark backgrounds.",
+    "Do NOT use pure black (#000000). Use #030305 or #0A0A0A.",
+    "Use Indigo-500 (#6366F1) as the primary brand color for Actions (Buttons, Links).",
+    "Use Teal-500 (#14B8A6) for positive metrics (Growth, Profit).",
+    "Glassmorphism (backdrop-blur) is mandatory for sticky elements and overlays.",
+    "Use 'Bento Grid' layouts for feature showcases.",
+    "Always add 'data-testid' to interactive elements.",
+    "Marketing pages must use custom HTML/Tailwind, NOT standard Shadcn cards.",
+    "Dashboard pages should use Shadcn components but styled with the 'Performance Pro' dark theme.",
+    "Use 'Sonner' for toasts.",
+    "Do not use gradients for text if readability is compromised.",
+    "Ensure all images have lazy loading and alt tags."
+  ],
+  "instructions_to_main_agent": {
+    "step_1": "Install 'lucide-react', 'recharts', 'framer-motion', 'clsx', 'tailwind-merge' if not present.",
+    "step_2": "Update tailwind.config.js to include the custom colors (background: #030305, etc).",
+    "step_3": "Create the Landing Page first with the Hero section using the abstract purple background.",
+    "step_4": "Build the Dashboard Layout (Sidebar + Header) using the glassmorphic style.",
+    "step_5": "Implement the core features (Audit, Content Engine) using the Bento Grid layout."
+  }
+}
