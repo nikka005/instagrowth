@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # Instagram API Configuration
 INSTAGRAM_APP_ID = os.environ.get('INSTAGRAM_APP_ID', '')
 INSTAGRAM_APP_SECRET = os.environ.get('INSTAGRAM_APP_SECRET', '')
-INSTAGRAM_REDIRECT_URI = os.environ.get('INSTAGRAM_REDIRECT_URI', 'https://growth-saas-app.preview.emergentagent.com/auth/instagram/callback')
+INSTAGRAM_REDIRECT_URI = os.environ.get('INSTAGRAM_REDIRECT_URI', 'https://growth-admin-staging.preview.emergentagent.com/auth/instagram/callback')
 
 # Meta Graph API Base URLs
 INSTAGRAM_BASIC_DISPLAY_API = "https://graph.instagram.com"

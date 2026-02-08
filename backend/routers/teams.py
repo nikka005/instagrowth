@@ -108,7 +108,7 @@ async def invite_team_member(team_id: str, data: TeamInvite, request: Request):
             f"/accept-invite?token={invite_token}", db
         )
     
-    origin = request.headers.get("origin", "https://growth-saas-app.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://growth-admin-staging.preview.emergentagent.com")
     invite_url = f"{origin}/accept-invite?token={invite_token}"
     
     email_html = f"""

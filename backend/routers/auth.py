@@ -42,7 +42,7 @@ async def register(data: UserCreate, request: Request):
     }
     await db.users.insert_one(user_doc)
     
-    origin = request.headers.get("origin", "https://growth-saas-app.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://growth-admin-staging.preview.emergentagent.com")
     verify_url = f"{origin}/verify-email?token={verification_token}"
     
     email_html = f"""
@@ -97,7 +97,7 @@ async def forgot_password(data: PasswordResetRequest, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    origin = request.headers.get("origin", "https://growth-saas-app.preview.emergentagent.com")
+    origin = request.headers.get("origin", "https://growth-admin-staging.preview.emergentagent.com")
     reset_url = f"{origin}/reset-password?token={reset_token}"
     
     email_html = f"""
