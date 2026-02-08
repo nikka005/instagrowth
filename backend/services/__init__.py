@@ -40,7 +40,7 @@ async def send_email(to_email: str, subject: str, html_content: str):
         logger.error(f"Failed to send email: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-async def generate_ai_content(prompt: str, system_message: str, timeout_seconds: int = 60) -> str:
+async def generate_ai_content(prompt: str, system_message: str, timeout_seconds: int = AI_TIMEOUT_MEDIUM) -> str:
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     
     chat = LlmChat(
@@ -59,7 +59,10 @@ async def generate_ai_content(prompt: str, system_message: str, timeout_seconds:
         return response
     except asyncio.TimeoutError:
         logger.error(f"AI generation timed out after {timeout_seconds}s")
-        raise TimeoutError(f"AI generation timed out after {timeout_seconds} seconds")
+        raise HTTPException(
+            status_code=504, 
+            detail=f"AI generation timed out. Please try again or simplify your request."
+        )
 
 async def estimate_instagram_metrics(username: str, niche: str) -> Dict[str, Any]:
     system_message = """You are an Instagram analytics expert. Based on the username and niche, 
