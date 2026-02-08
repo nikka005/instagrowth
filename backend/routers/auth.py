@@ -139,7 +139,7 @@ async def reset_password(data: PasswordResetConfirm):
     return {"message": "Password reset successfully"}
 
 @router.post("/login")
-async def login(data: UserLogin, response: Response):
+async def login(data: UserLogin, totp_code: str = None, response: Response = None):
     db = get_database()
     user_doc = await db.users.find_one({"email": data.email}, {"_id": 0})
     if not user_doc:
@@ -147,6 +147,24 @@ async def login(data: UserLogin, response: Response):
     
     if not verify_password(data.password, user_doc.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Check if 2FA is enabled
+    if user_doc.get("is_2fa_enabled"):
+        if not totp_code:
+            return {"requires_2fa": True, "message": "2FA code required", "user_id": user_doc["user_id"]}
+        
+        # Verify 2FA code
+        import pyotp
+        totp = pyotp.TOTP(user_doc["totp_secret"])
+        if not totp.verify(totp_code):
+            # Check backup codes
+            if totp_code not in user_doc.get("backup_codes", []):
+                raise HTTPException(status_code=401, detail="Invalid 2FA code")
+            # Remove used backup code
+            await db.users.update_one(
+                {"user_id": user_doc["user_id"]},
+                {"$pull": {"backup_codes": totp_code}}
+            )
     
     token = create_token(user_doc["user_id"], data.email)
     
