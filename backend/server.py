@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, UploadFile, File
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -17,7 +17,11 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor
 from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
 import base64
+import asyncio
+import resend
+import secrets
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -31,6 +35,12 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ.get('JWT_SECRET', 'default_secret')
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY')
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@instagrowth.app')
+
+# Initialize Resend
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
 
 # Create the main app
 app = FastAPI(title="InstaGrowth OS API")
@@ -60,11 +70,13 @@ class User(BaseModel):
     email: str
     name: str
     picture: Optional[str] = None
-    role: str = "starter"  # starter, pro, agency, enterprise, admin
+    role: str = "starter"
     plan_id: Optional[str] = None
     account_limit: int = 1
     ai_usage_limit: int = 10
     ai_usage_current: int = 0
+    email_verified: bool = False
+    team_id: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -78,6 +90,54 @@ class UserResponse(BaseModel):
     account_limit: int
     ai_usage_limit: int
     ai_usage_current: int
+    email_verified: bool = False
+    team_id: Optional[str] = None
+
+# Password Reset Models
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+# Team Models
+class TeamCreate(BaseModel):
+    name: str
+
+class TeamInvite(BaseModel):
+    email: EmailStr
+    role: str = "viewer"  # viewer, editor, admin
+
+class TeamMemberUpdate(BaseModel):
+    role: str
+
+class Team(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    team_id: str
+    owner_id: str
+    name: str
+    logo_url: Optional[str] = None
+    brand_color: str = "#6366F1"
+    created_at: datetime
+
+class TeamMember(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    member_id: str
+    team_id: str
+    user_id: str
+    email: str
+    name: str
+    role: str  # owner, admin, editor, viewer
+    status: str = "pending"  # pending, active
+    invited_at: datetime
+    joined_at: Optional[datetime] = None
+
+# White-label Settings
+class WhiteLabelSettings(BaseModel):
+    logo_url: Optional[str] = None
+    brand_color: str = "#6366F1"
+    company_name: Optional[str] = None
 
 # Instagram Account Models
 class InstagramAccountCreate(BaseModel):
@@ -94,11 +154,15 @@ class InstagramAccount(BaseModel):
     model_config = ConfigDict(extra="ignore")
     account_id: str
     user_id: str
+    team_id: Optional[str] = None
     username: str
     niche: str
     notes: Optional[str] = None
     follower_count: Optional[int] = None
     engagement_rate: Optional[float] = None
+    estimated_reach: Optional[int] = None
+    posting_frequency: Optional[str] = None
+    best_posting_time: Optional[str] = None
     last_audit_date: Optional[datetime] = None
     status: str = "active"
     created_at: datetime
@@ -116,6 +180,8 @@ class Audit(BaseModel):
     engagement_score: int
     shadowban_risk: str
     content_consistency: int
+    estimated_followers: Optional[int] = None
+    estimated_engagement_rate: Optional[float] = None
     growth_mistakes: List[str]
     recommendations: List[str]
     roadmap: Dict[str, Any]
@@ -124,7 +190,7 @@ class Audit(BaseModel):
 # Content Models
 class ContentRequest(BaseModel):
     account_id: str
-    content_type: str  # reels, hooks, captions, hashtags
+    content_type: str
     niche: Optional[str] = None
     topic: Optional[str] = None
 
@@ -140,7 +206,7 @@ class ContentItem(BaseModel):
 # Growth Plan Models
 class GrowthPlanRequest(BaseModel):
     account_id: str
-    duration: int  # 7, 14, or 30 days
+    duration: int
     niche: Optional[str] = None
 
 class GrowthPlan(BaseModel):
@@ -152,17 +218,7 @@ class GrowthPlan(BaseModel):
     daily_tasks: List[Dict[str, Any]]
     created_at: datetime
 
-# Subscription Models
-class SubscriptionPlan(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    plan_id: str
-    name: str
-    price: float
-    account_limit: int
-    ai_usage_limit: int
-    features: List[str]
-    is_active: bool = True
-
+# Payment Models
 class PaymentTransaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
     transaction_id: str
@@ -183,19 +239,41 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
-def create_token(user_id: str, email: str) -> str:
+def create_token(user_id: str, email: str, expires_days: int = 7) -> str:
     payload = {
         "user_id": user_id,
         "email": email,
-        "exp": datetime.now(timezone.utc) + timedelta(days=7)
+        "exp": datetime.now(timezone.utc) + timedelta(days=expires_days)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
+def create_verification_token() -> str:
+    return secrets.token_urlsafe(32)
+
+async def send_email(to_email: str, subject: str, html_content: str):
+    """Send email using Resend"""
+    if not RESEND_API_KEY or RESEND_API_KEY == "re_placeholder_key":
+        logger.warning(f"Email not sent (no API key): {subject} to {to_email}")
+        return {"status": "skipped", "message": "Email service not configured"}
+    
+    params = {
+        "from": SENDER_EMAIL,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_content
+    }
+    
+    try:
+        email = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Email sent to {to_email}: {subject}")
+        return {"status": "success", "email_id": email.get("id")}
+    except Exception as e:
+        logger.error(f"Failed to send email: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
 async def get_current_user(request: Request) -> User:
-    # Check cookie first
     session_token = request.cookies.get("session_token")
     
-    # Fall back to Authorization header
     if not session_token:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
@@ -204,7 +282,6 @@ async def get_current_user(request: Request) -> User:
     if not session_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    # Check if it's a JWT token (email/password auth)
     try:
         payload = jwt.decode(session_token, JWT_SECRET, algorithms=["HS256"])
         user_doc = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0})
@@ -216,7 +293,6 @@ async def get_current_user(request: Request) -> User:
     except jwt.InvalidTokenError:
         pass
     
-    # Check session-based auth (Google OAuth)
     session_doc = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
     if not session_doc:
         raise HTTPException(status_code=401, detail="Invalid session")
@@ -234,6 +310,20 @@ async def get_current_user(request: Request) -> User:
         raise HTTPException(status_code=401, detail="User not found")
     
     return User(**user_doc)
+
+async def get_user_with_team_access(request: Request) -> tuple:
+    """Get user and check team access for shared accounts"""
+    user = await get_current_user(request)
+    team_ids = [user.team_id] if user.team_id else []
+    
+    # Get teams where user is a member
+    member_teams = await db.team_members.find(
+        {"user_id": user.user_id, "status": "active"},
+        {"_id": 0, "team_id": 1}
+    ).to_list(100)
+    team_ids.extend([m["team_id"] for m in member_teams])
+    
+    return user, list(set(team_ids))
 
 async def check_account_limit(user: User):
     count = await db.instagram_accounts.count_documents({"user_id": user.user_id})
@@ -253,7 +343,6 @@ async def increment_ai_usage(user_id: str):
 # ==================== AI FUNCTIONS ====================
 
 async def generate_ai_content(prompt: str, system_message: str) -> str:
-    """Generate content using OpenAI GPT-5.2 via emergentintegrations"""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     
     chat = LlmChat(
@@ -266,15 +355,57 @@ async def generate_ai_content(prompt: str, system_message: str) -> str:
     response = await chat.send_message(user_message)
     return response
 
+async def estimate_instagram_metrics(username: str, niche: str) -> Dict[str, Any]:
+    """Use AI to estimate Instagram metrics based on username and niche"""
+    system_message = """You are an Instagram analytics expert. Based on the username and niche, 
+    provide realistic estimates for Instagram account metrics. Return JSON with:
+    - estimated_followers (int, based on typical accounts in this niche)
+    - estimated_engagement_rate (float, 1-10%)
+    - estimated_reach (int, typical reach per post)
+    - posting_frequency (string, e.g., "daily", "3x per week")
+    - best_posting_time (string, e.g., "9 AM - 12 PM EST")
+    - growth_potential (string: low/medium/high)
+    Be realistic and base estimates on typical performance in the niche."""
+    
+    prompt = f"""Estimate Instagram metrics for:
+    Username: @{username}
+    Niche: {niche}
+    
+    Provide realistic estimates based on typical accounts in this niche."""
+    
+    try:
+        response = await generate_ai_content(prompt, system_message)
+        import json
+        cleaned = response.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        return json.loads(cleaned.strip())
+    except Exception as e:
+        logger.error(f"AI metrics estimation error: {e}")
+        return {
+            "estimated_followers": 5000,
+            "estimated_engagement_rate": 3.5,
+            "estimated_reach": 2000,
+            "posting_frequency": "3x per week",
+            "best_posting_time": "9 AM - 12 PM",
+            "growth_potential": "medium"
+        }
+
 # ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register")
-async def register(data: UserCreate):
+async def register(data: UserCreate, request: Request):
     existing = await db.users.find_one({"email": data.email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
     user_id = f"user_{uuid.uuid4().hex[:12]}"
+    verification_token = create_verification_token()
+    
     user_doc = {
         "user_id": user_id,
         "email": data.email,
@@ -286,13 +417,154 @@ async def register(data: UserCreate):
         "account_limit": 1,
         "ai_usage_limit": 10,
         "ai_usage_current": 0,
+        "email_verified": False,
+        "verification_token": verification_token,
+        "team_id": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": None
     }
     await db.users.insert_one(user_doc)
     
+    # Send verification email
+    origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    verify_url = f"{origin}/verify-email?token={verification_token}"
+    
+    email_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%); padding: 30px; border-radius: 12px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Welcome to InstaGrowth OS!</h1>
+        </div>
+        <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
+            <p style="font-size: 16px; color: #333;">Hi {data.name},</p>
+            <p style="font-size: 16px; color: #333;">Please verify your email address to get started:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{verify_url}" style="background: #6366F1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Verify Email</a>
+            </div>
+            <p style="font-size: 14px; color: #666;">Or copy this link: {verify_url}</p>
+            <p style="font-size: 14px; color: #666;">This link expires in 24 hours.</p>
+        </div>
+    </div>
+    """
+    await send_email(data.email, "Verify your InstaGrowth OS account", email_html)
+    
     token = create_token(user_id, data.email)
-    return {"token": token, "user": UserResponse(**user_doc)}
+    return {"token": token, "user": UserResponse(**user_doc), "message": "Please check your email to verify your account"}
+
+@api_router.post("/auth/verify-email")
+async def verify_email(token: str):
+    user_doc = await db.users.find_one({"verification_token": token}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+    
+    await db.users.update_one(
+        {"verification_token": token},
+        {"$set": {"email_verified": True, "verification_token": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Email verified successfully"}
+
+@api_router.post("/auth/resend-verification")
+async def resend_verification(request: Request, user: User = Depends(get_current_user)):
+    if user.email_verified:
+        raise HTTPException(status_code=400, detail="Email already verified")
+    
+    verification_token = create_verification_token()
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"verification_token": verification_token}}
+    )
+    
+    origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    verify_url = f"{origin}/verify-email?token={verification_token}"
+    
+    email_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%); padding: 30px; border-radius: 12px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Verify Your Email</h1>
+        </div>
+        <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
+            <p style="font-size: 16px; color: #333;">Hi {user.name},</p>
+            <p style="font-size: 16px; color: #333;">Click below to verify your email:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{verify_url}" style="background: #6366F1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Verify Email</a>
+            </div>
+        </div>
+    </div>
+    """
+    await send_email(user.email, "Verify your InstaGrowth OS account", email_html)
+    
+    return {"message": "Verification email sent"}
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(data: PasswordResetRequest, request: Request):
+    user_doc = await db.users.find_one({"email": data.email}, {"_id": 0})
+    if not user_doc:
+        # Don't reveal if email exists
+        return {"message": "If this email exists, a password reset link will be sent"}
+    
+    reset_token = create_verification_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    await db.password_resets.insert_one({
+        "token": reset_token,
+        "user_id": user_doc["user_id"],
+        "email": data.email,
+        "expires_at": expires_at.isoformat(),
+        "used": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    reset_url = f"{origin}/reset-password?token={reset_token}"
+    
+    email_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%); padding: 30px; border-radius: 12px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Reset Your Password</h1>
+        </div>
+        <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
+            <p style="font-size: 16px; color: #333;">Hi {user_doc['name']},</p>
+            <p style="font-size: 16px; color: #333;">You requested a password reset. Click below to create a new password:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{reset_url}" style="background: #6366F1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Reset Password</a>
+            </div>
+            <p style="font-size: 14px; color: #666;">This link expires in 1 hour.</p>
+            <p style="font-size: 14px; color: #666;">If you didn't request this, please ignore this email.</p>
+        </div>
+    </div>
+    """
+    await send_email(data.email, "Reset your InstaGrowth OS password", email_html)
+    
+    return {"message": "If this email exists, a password reset link will be sent"}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(data: PasswordResetConfirm):
+    reset_doc = await db.password_resets.find_one(
+        {"token": data.token, "used": False},
+        {"_id": 0}
+    )
+    if not reset_doc:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    expires_at = datetime.fromisoformat(reset_doc["expires_at"])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+    
+    # Update password
+    await db.users.update_one(
+        {"user_id": reset_doc["user_id"]},
+        {"$set": {"password_hash": hash_password(data.new_password), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Mark token as used
+    await db.password_resets.update_one(
+        {"token": data.token},
+        {"$set": {"used": True}}
+    )
+    
+    return {"message": "Password reset successfully"}
 
 @api_router.post("/auth/login")
 async def login(data: UserLogin, response: Response):
@@ -305,7 +577,6 @@ async def login(data: UserLogin, response: Response):
     
     token = create_token(user_doc["user_id"], data.email)
     
-    # Set cookie for session
     response.set_cookie(
         key="session_token",
         value=token,
@@ -320,12 +591,10 @@ async def login(data: UserLogin, response: Response):
 
 @api_router.post("/auth/session")
 async def create_session(request: Request, response: Response):
-    """Handle Google OAuth session creation"""
     session_id = request.headers.get("X-Session-ID")
     if not session_id:
         raise HTTPException(status_code=400, detail="Session ID required")
     
-    # Get user data from Emergent auth
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
@@ -336,11 +605,9 @@ async def create_session(request: Request, response: Response):
         
         auth_data = resp.json()
     
-    # Check if user exists
     user_doc = await db.users.find_one({"email": auth_data["email"]}, {"_id": 0})
     
     if not user_doc:
-        # Create new user
         user_id = f"user_{uuid.uuid4().hex[:12]}"
         user_doc = {
             "user_id": user_id,
@@ -353,13 +620,14 @@ async def create_session(request: Request, response: Response):
             "account_limit": 1,
             "ai_usage_limit": 10,
             "ai_usage_current": 0,
+            "email_verified": True,  # Google OAuth emails are verified
+            "team_id": None,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": None
         }
         await db.users.insert_one(user_doc)
     else:
         user_id = user_doc["user_id"]
-        # Update picture if changed
         if auth_data.get("picture") != user_doc.get("picture"):
             await db.users.update_one(
                 {"user_id": user_id},
@@ -367,7 +635,6 @@ async def create_session(request: Request, response: Response):
             )
             user_doc["picture"] = auth_data.get("picture")
     
-    # Store session
     session_token = auth_data["session_token"]
     session_doc = {
         "user_id": user_doc["user_id"],
@@ -377,7 +644,6 @@ async def create_session(request: Request, response: Response):
     }
     await db.user_sessions.insert_one(session_doc)
     
-    # Set cookie
     response.set_cookie(
         key="session_token",
         value=session_token,
@@ -403,21 +669,286 @@ async def logout(request: Request, response: Response):
     response.delete_cookie(key="session_token", path="/")
     return {"message": "Logged out"}
 
+# ==================== TEAM MANAGEMENT ROUTES ====================
+
+@api_router.post("/teams")
+async def create_team(data: TeamCreate, user: User = Depends(get_current_user)):
+    # Only agency and enterprise can create teams
+    if user.role not in ["agency", "enterprise", "admin"]:
+        raise HTTPException(status_code=403, detail="Team management requires Agency plan or higher")
+    
+    team_id = f"team_{uuid.uuid4().hex[:12]}"
+    team_doc = {
+        "team_id": team_id,
+        "owner_id": user.user_id,
+        "name": data.name,
+        "logo_url": None,
+        "brand_color": "#6366F1",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.teams.insert_one(team_doc)
+    
+    # Add owner as team member
+    member_doc = {
+        "member_id": f"member_{uuid.uuid4().hex[:12]}",
+        "team_id": team_id,
+        "user_id": user.user_id,
+        "email": user.email,
+        "name": user.name,
+        "role": "owner",
+        "status": "active",
+        "invited_at": datetime.now(timezone.utc).isoformat(),
+        "joined_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.team_members.insert_one(member_doc)
+    
+    # Update user's team_id
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"team_id": team_id, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return Team(**team_doc)
+
+@api_router.get("/teams")
+async def get_user_teams(user: User = Depends(get_current_user)):
+    # Get teams where user is owner or member
+    member_teams = await db.team_members.find(
+        {"user_id": user.user_id, "status": "active"},
+        {"_id": 0}
+    ).to_list(100)
+    
+    team_ids = [m["team_id"] for m in member_teams]
+    teams = await db.teams.find({"team_id": {"$in": team_ids}}, {"_id": 0}).to_list(100)
+    
+    return teams
+
+@api_router.get("/teams/{team_id}")
+async def get_team(team_id: str, user: User = Depends(get_current_user)):
+    # Check user has access
+    member = await db.team_members.find_one(
+        {"team_id": team_id, "user_id": user.user_id, "status": "active"},
+        {"_id": 0}
+    )
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this team")
+    
+    team = await db.teams.find_one({"team_id": team_id}, {"_id": 0})
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    
+    return team
+
+@api_router.post("/teams/{team_id}/invite")
+async def invite_team_member(team_id: str, data: TeamInvite, request: Request, user: User = Depends(get_current_user)):
+    # Check user is owner or admin
+    member = await db.team_members.find_one(
+        {"team_id": team_id, "user_id": user.user_id, "role": {"$in": ["owner", "admin"]}, "status": "active"},
+        {"_id": 0}
+    )
+    if not member:
+        raise HTTPException(status_code=403, detail="Only team owners and admins can invite members")
+    
+    # Check if already invited
+    existing = await db.team_members.find_one(
+        {"team_id": team_id, "email": data.email},
+        {"_id": 0}
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="User already invited to this team")
+    
+    team = await db.teams.find_one({"team_id": team_id}, {"_id": 0})
+    
+    invite_token = create_verification_token()
+    member_doc = {
+        "member_id": f"member_{uuid.uuid4().hex[:12]}",
+        "team_id": team_id,
+        "user_id": None,  # Will be set when user accepts
+        "email": data.email,
+        "name": "",
+        "role": data.role,
+        "status": "pending",
+        "invite_token": invite_token,
+        "invited_at": datetime.now(timezone.utc).isoformat(),
+        "joined_at": None
+    }
+    await db.team_members.insert_one(member_doc)
+    
+    # Send invitation email
+    origin = request.headers.get("origin", "https://instagrowth-os.preview.emergentagent.com")
+    invite_url = f"{origin}/accept-invite?token={invite_token}"
+    
+    email_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%); padding: 30px; border-radius: 12px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Team Invitation</h1>
+        </div>
+        <div style="padding: 30px; background: #f9f9f9; border-radius: 0 0 12px 12px;">
+            <p style="font-size: 16px; color: #333;">You've been invited to join <strong>{team['name']}</strong> on InstaGrowth OS!</p>
+            <p style="font-size: 16px; color: #333;">Invited by: {user.name}</p>
+            <p style="font-size: 16px; color: #333;">Your role: {data.role.capitalize()}</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{invite_url}" style="background: #6366F1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Accept Invitation</a>
+            </div>
+        </div>
+    </div>
+    """
+    await send_email(data.email, f"You're invited to join {team['name']} on InstaGrowth OS", email_html)
+    
+    return {"message": "Invitation sent", "member_id": member_doc["member_id"]}
+
+@api_router.post("/teams/accept-invite")
+async def accept_invite(token: str, user: User = Depends(get_current_user)):
+    invite = await db.team_members.find_one(
+        {"invite_token": token, "status": "pending"},
+        {"_id": 0}
+    )
+    if not invite:
+        raise HTTPException(status_code=400, detail="Invalid or expired invitation")
+    
+    if invite["email"] != user.email:
+        raise HTTPException(status_code=403, detail="This invitation was sent to a different email")
+    
+    # Update member
+    await db.team_members.update_one(
+        {"invite_token": token},
+        {"$set": {
+            "user_id": user.user_id,
+            "name": user.name,
+            "status": "active",
+            "invite_token": None,
+            "joined_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Update user's team_id if not set
+    if not user.team_id:
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": {"team_id": invite["team_id"], "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    return {"message": "Invitation accepted", "team_id": invite["team_id"]}
+
+@api_router.get("/teams/{team_id}/members")
+async def get_team_members(team_id: str, user: User = Depends(get_current_user)):
+    # Check user has access
+    member = await db.team_members.find_one(
+        {"team_id": team_id, "user_id": user.user_id, "status": "active"},
+        {"_id": 0}
+    )
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this team")
+    
+    members = await db.team_members.find({"team_id": team_id}, {"_id": 0}).to_list(100)
+    return members
+
+@api_router.put("/teams/{team_id}/members/{member_id}")
+async def update_team_member(team_id: str, member_id: str, data: TeamMemberUpdate, user: User = Depends(get_current_user)):
+    # Check user is owner or admin
+    current_member = await db.team_members.find_one(
+        {"team_id": team_id, "user_id": user.user_id, "role": {"$in": ["owner", "admin"]}, "status": "active"},
+        {"_id": 0}
+    )
+    if not current_member:
+        raise HTTPException(status_code=403, detail="Only team owners and admins can update members")
+    
+    # Can't change owner role
+    target_member = await db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    if target_member and target_member["role"] == "owner":
+        raise HTTPException(status_code=400, detail="Cannot change owner's role")
+    
+    await db.team_members.update_one(
+        {"member_id": member_id, "team_id": team_id},
+        {"$set": {"role": data.role}}
+    )
+    
+    return {"message": "Member updated"}
+
+@api_router.delete("/teams/{team_id}/members/{member_id}")
+async def remove_team_member(team_id: str, member_id: str, user: User = Depends(get_current_user)):
+    # Check user is owner or admin
+    current_member = await db.team_members.find_one(
+        {"team_id": team_id, "user_id": user.user_id, "role": {"$in": ["owner", "admin"]}, "status": "active"},
+        {"_id": 0}
+    )
+    if not current_member:
+        raise HTTPException(status_code=403, detail="Only team owners and admins can remove members")
+    
+    # Can't remove owner
+    target_member = await db.team_members.find_one({"member_id": member_id}, {"_id": 0})
+    if target_member and target_member["role"] == "owner":
+        raise HTTPException(status_code=400, detail="Cannot remove team owner")
+    
+    await db.team_members.delete_one({"member_id": member_id, "team_id": team_id})
+    
+    return {"message": "Member removed"}
+
+@api_router.put("/teams/{team_id}/settings")
+async def update_team_settings(team_id: str, data: WhiteLabelSettings, user: User = Depends(get_current_user)):
+    # Check user is owner
+    member = await db.team_members.find_one(
+        {"team_id": team_id, "user_id": user.user_id, "role": "owner", "status": "active"},
+        {"_id": 0}
+    )
+    if not member:
+        raise HTTPException(status_code=403, detail="Only team owner can update settings")
+    
+    update_data = {}
+    if data.logo_url is not None:
+        update_data["logo_url"] = data.logo_url
+    if data.brand_color:
+        update_data["brand_color"] = data.brand_color
+    if data.company_name:
+        update_data["name"] = data.company_name
+    
+    if update_data:
+        await db.teams.update_one({"team_id": team_id}, {"$set": update_data})
+    
+    team = await db.teams.find_one({"team_id": team_id}, {"_id": 0})
+    return team
+
+@api_router.post("/teams/{team_id}/logo")
+async def upload_team_logo(team_id: str, file: UploadFile = File(...), user: User = Depends(get_current_user)):
+    # Check user is owner
+    member = await db.team_members.find_one(
+        {"team_id": team_id, "user_id": user.user_id, "role": "owner", "status": "active"},
+        {"_id": 0}
+    )
+    if not member:
+        raise HTTPException(status_code=403, detail="Only team owner can upload logo")
+    
+    # Read and encode logo as base64
+    contents = await file.read()
+    logo_b64 = base64.b64encode(contents).decode()
+    logo_url = f"data:{file.content_type};base64,{logo_b64}"
+    
+    await db.teams.update_one({"team_id": team_id}, {"$set": {"logo_url": logo_url}})
+    
+    return {"logo_url": logo_url}
+
 # ==================== INSTAGRAM ACCOUNTS ROUTES ====================
 
 @api_router.post("/accounts", response_model=InstagramAccount)
 async def create_account(data: InstagramAccountCreate, user: User = Depends(get_current_user)):
     await check_account_limit(user)
     
+    # Get AI-estimated metrics
+    metrics = await estimate_instagram_metrics(data.username, data.niche)
+    
     account_id = f"acc_{uuid.uuid4().hex[:12]}"
     account_doc = {
         "account_id": account_id,
         "user_id": user.user_id,
+        "team_id": user.team_id,
         "username": data.username,
         "niche": data.niche,
         "notes": data.notes,
-        "follower_count": None,
-        "engagement_rate": None,
+        "follower_count": metrics.get("estimated_followers"),
+        "engagement_rate": metrics.get("estimated_engagement_rate"),
+        "estimated_reach": metrics.get("estimated_reach"),
+        "posting_frequency": metrics.get("posting_frequency"),
+        "best_posting_time": metrics.get("best_posting_time"),
         "last_audit_date": None,
         "status": "active",
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -426,19 +957,26 @@ async def create_account(data: InstagramAccountCreate, user: User = Depends(get_
     return InstagramAccount(**account_doc)
 
 @api_router.get("/accounts", response_model=List[InstagramAccount])
-async def get_accounts(user: User = Depends(get_current_user)):
-    accounts = await db.instagram_accounts.find(
-        {"user_id": user.user_id},
-        {"_id": 0}
-    ).to_list(100)
+async def get_accounts(request: Request):
+    user, team_ids = await get_user_with_team_access(request)
+    
+    # Get user's own accounts and team accounts
+    query = {"$or": [{"user_id": user.user_id}]}
+    if team_ids:
+        query["$or"].append({"team_id": {"$in": team_ids}})
+    
+    accounts = await db.instagram_accounts.find(query, {"_id": 0}).to_list(100)
     return [InstagramAccount(**acc) for acc in accounts]
 
 @api_router.get("/accounts/{account_id}", response_model=InstagramAccount)
-async def get_account(account_id: str, user: User = Depends(get_current_user)):
-    account = await db.instagram_accounts.find_one(
-        {"account_id": account_id, "user_id": user.user_id},
-        {"_id": 0}
-    )
+async def get_account(account_id: str, request: Request):
+    user, team_ids = await get_user_with_team_access(request)
+    
+    query = {"account_id": account_id, "$or": [{"user_id": user.user_id}]}
+    if team_ids:
+        query["$or"].append({"team_id": {"$in": team_ids}})
+    
+    account = await db.instagram_accounts.find_one(query, {"_id": 0})
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     return InstagramAccount(**account)
@@ -456,10 +994,7 @@ async def update_account(account_id: str, data: InstagramAccountUpdate, user: Us
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    account = await db.instagram_accounts.find_one(
-        {"account_id": account_id},
-        {"_id": 0}
-    )
+    account = await db.instagram_accounts.find_one({"account_id": account_id}, {"_id": 0})
     return InstagramAccount(**account)
 
 @api_router.delete("/accounts/{account_id}")
@@ -471,13 +1006,41 @@ async def delete_account(account_id: str, user: User = Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Account not found")
     return {"message": "Account deleted"}
 
+@api_router.post("/accounts/{account_id}/refresh-metrics")
+async def refresh_account_metrics(account_id: str, user: User = Depends(get_current_user)):
+    """Refresh AI-estimated metrics for an account"""
+    account = await db.instagram_accounts.find_one(
+        {"account_id": account_id, "user_id": user.user_id},
+        {"_id": 0}
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    
+    await check_ai_usage(user)
+    
+    metrics = await estimate_instagram_metrics(account["username"], account["niche"])
+    
+    await db.instagram_accounts.update_one(
+        {"account_id": account_id},
+        {"$set": {
+            "follower_count": metrics.get("estimated_followers"),
+            "engagement_rate": metrics.get("estimated_engagement_rate"),
+            "estimated_reach": metrics.get("estimated_reach"),
+            "posting_frequency": metrics.get("posting_frequency"),
+            "best_posting_time": metrics.get("best_posting_time")
+        }}
+    )
+    
+    await increment_ai_usage(user.user_id)
+    
+    return metrics
+
 # ==================== AI AUDIT ROUTES ====================
 
 @api_router.post("/audits", response_model=Audit)
 async def create_audit(data: AuditRequest, user: User = Depends(get_current_user)):
     await check_ai_usage(user)
     
-    # Get account
     account = await db.instagram_accounts.find_one(
         {"account_id": data.account_id, "user_id": user.user_id},
         {"_id": 0}
@@ -485,12 +1048,13 @@ async def create_audit(data: AuditRequest, user: User = Depends(get_current_user
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    # Generate audit using AI
     system_message = """You are an Instagram growth expert analyzing accounts. 
     Provide detailed, actionable analysis in JSON format with these exact keys:
     - engagement_score (0-100)
     - shadowban_risk (low/medium/high)
     - content_consistency (0-100)
+    - estimated_followers (int)
+    - estimated_engagement_rate (float, percentage)
     - growth_mistakes (array of 3-5 specific mistakes)
     - recommendations (array of 5-7 actionable recommendations)
     - roadmap (object with week1, week2, week3, week4 arrays of daily tasks)
@@ -500,15 +1064,14 @@ async def create_audit(data: AuditRequest, user: User = Depends(get_current_user
     Username: @{account['username']}
     Niche: {account['niche']}
     Notes: {account.get('notes', 'No additional notes')}
+    Current estimated followers: {account.get('follower_count', 'Unknown')}
     
     Generate a comprehensive audit with engagement score, shadowban risk assessment, 
     content consistency rating, common growth mistakes, and a 30-day recovery roadmap."""
     
     try:
         ai_response = await generate_ai_content(prompt, system_message)
-        # Parse JSON from response
         import json
-        # Clean response - remove markdown code blocks if present
         cleaned = ai_response.strip()
         if cleaned.startswith("```json"):
             cleaned = cleaned[7:]
@@ -520,11 +1083,12 @@ async def create_audit(data: AuditRequest, user: User = Depends(get_current_user
         audit_data = json.loads(cleaned.strip())
     except Exception as e:
         logger.error(f"AI Error: {e}")
-        # Fallback mock data
         audit_data = {
             "engagement_score": 65,
             "shadowban_risk": "medium",
             "content_consistency": 70,
+            "estimated_followers": account.get("follower_count", 5000),
+            "estimated_engagement_rate": account.get("engagement_rate", 3.5),
             "growth_mistakes": [
                 "Inconsistent posting schedule",
                 "Not using trending audio in Reels",
@@ -557,6 +1121,8 @@ async def create_audit(data: AuditRequest, user: User = Depends(get_current_user
         "engagement_score": audit_data.get("engagement_score", 0),
         "shadowban_risk": audit_data.get("shadowban_risk", "unknown"),
         "content_consistency": audit_data.get("content_consistency", 0),
+        "estimated_followers": audit_data.get("estimated_followers"),
+        "estimated_engagement_rate": audit_data.get("estimated_engagement_rate"),
         "growth_mistakes": audit_data.get("growth_mistakes", []),
         "recommendations": audit_data.get("recommendations", []),
         "roadmap": audit_data.get("roadmap", {}),
@@ -564,7 +1130,6 @@ async def create_audit(data: AuditRequest, user: User = Depends(get_current_user
     }
     await db.audits.insert_one(audit_doc)
     
-    # Update account last audit date
     await db.instagram_accounts.update_one(
         {"account_id": data.account_id},
         {"$set": {"last_audit_date": datetime.now(timezone.utc).isoformat()}}
@@ -600,21 +1165,39 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
     if not audit:
         raise HTTPException(status_code=404, detail="Audit not found")
     
-    # Check plan for PDF export
     if user.role == "starter":
         raise HTTPException(status_code=403, detail="PDF export requires Pro plan or higher")
     
-    # Generate PDF
+    # Get white-label settings if user has a team
+    team = None
+    if user.team_id:
+        team = await db.teams.find_one({"team_id": user.team_id}, {"_id": 0})
+    
+    brand_color = team.get("brand_color", "#6366F1") if team else "#6366F1"
+    company_name = team.get("name", "InstaGrowth OS") if team else "InstaGrowth OS"
+    logo_url = team.get("logo_url") if team else None
+    
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
-    # Header
-    p.setFillColor(HexColor("#6366F1"))
+    # Header with brand color
+    p.setFillColor(HexColor(brand_color))
     p.rect(0, height - 100, width, 100, fill=True)
+    
+    # Logo if available
+    if logo_url and logo_url.startswith("data:"):
+        try:
+            logo_data = logo_url.split(",")[1]
+            logo_bytes = base64.b64decode(logo_data)
+            logo_img = ImageReader(BytesIO(logo_bytes))
+            p.drawImage(logo_img, 30, height - 80, width=50, height=50, preserveAspectRatio=True)
+        except Exception as e:
+            logger.warning(f"Failed to load logo: {e}")
+    
     p.setFillColor(HexColor("#FFFFFF"))
-    p.setFont("Helvetica-Bold", 24)
-    p.drawString(50, height - 60, "InstaGrowth OS - Account Audit Report")
+    p.setFont("Helvetica-Bold", 20)
+    p.drawString(100 if logo_url else 50, height - 55, f"{company_name} - Account Audit Report")
     
     # Account info
     y = height - 140
@@ -630,6 +1213,12 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
     p.drawString(50, y, f"Shadowban Risk: {audit['shadowban_risk'].upper()}")
     y -= 20
     p.drawString(50, y, f"Content Consistency: {audit['content_consistency']}/100")
+    if audit.get('estimated_followers'):
+        y -= 20
+        p.drawString(50, y, f"Estimated Followers: {audit['estimated_followers']:,}")
+    if audit.get('estimated_engagement_rate'):
+        y -= 20
+        p.drawString(50, y, f"Estimated Engagement Rate: {audit['estimated_engagement_rate']:.1f}%")
     y -= 40
     
     # Mistakes
@@ -654,7 +1243,7 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
     # Footer
     p.setFont("Helvetica", 9)
     p.setFillColor(HexColor("#666666"))
-    p.drawString(50, 30, f"Generated by InstaGrowth OS | {datetime.now().strftime('%Y-%m-%d')}")
+    p.drawString(50, 30, f"Generated by {company_name} | {datetime.now().strftime('%Y-%m-%d')}")
     
     p.save()
     buffer.seek(0)
@@ -671,7 +1260,6 @@ async def get_audit_pdf(audit_id: str, user: User = Depends(get_current_user)):
 async def generate_content(data: ContentRequest, user: User = Depends(get_current_user)):
     await check_ai_usage(user)
     
-    # Get account for niche context
     account = await db.instagram_accounts.find_one(
         {"account_id": data.account_id, "user_id": user.user_id},
         {"_id": 0}
@@ -697,7 +1285,6 @@ async def generate_content(data: ContentRequest, user: User = Depends(get_curren
     try:
         ai_response = await generate_ai_content(prompt, system_message)
         import json
-        # Clean response
         cleaned = ai_response.strip()
         if cleaned.startswith("```json"):
             cleaned = cleaned[7:]
@@ -711,7 +1298,6 @@ async def generate_content(data: ContentRequest, user: User = Depends(get_curren
             content_list = [str(item) for item in content_list]
     except Exception as e:
         logger.error(f"AI Content Error: {e}")
-        # Fallback content
         fallback = {
             "reels": ["Day in the life Reel", "Behind the scenes", "Tutorial style", "Before/After transformation", "Trending audio dance"],
             "hooks": ["Wait until you see this...", "POV: You just discovered...", "This changed everything for me", "Stop scrolling if you...", "The secret nobody tells you about..."],
@@ -789,7 +1375,6 @@ async def create_growth_plan(data: GrowthPlanRequest, user: User = Depends(get_c
         daily_tasks = plan_data.get("daily_tasks", [])
     except Exception as e:
         logger.error(f"AI Plan Error: {e}")
-        # Generate fallback tasks
         daily_tasks = []
         for day in range(1, data.duration + 1):
             task_type = ["post", "engage", "analyze", "learn"][day % 4]
@@ -847,16 +1432,35 @@ async def get_growth_plan_pdf(plan_id: str, user: User = Depends(get_current_use
     if user.role == "starter":
         raise HTTPException(status_code=403, detail="PDF export requires Pro plan or higher")
     
+    # Get white-label settings
+    team = None
+    if user.team_id:
+        team = await db.teams.find_one({"team_id": user.team_id}, {"_id": 0})
+    
+    brand_color = team.get("brand_color", "#6366F1") if team else "#6366F1"
+    company_name = team.get("name", "InstaGrowth OS") if team else "InstaGrowth OS"
+    logo_url = team.get("logo_url") if team else None
+    
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
     # Header
-    p.setFillColor(HexColor("#6366F1"))
+    p.setFillColor(HexColor(brand_color))
     p.rect(0, height - 100, width, 100, fill=True)
+    
+    if logo_url and logo_url.startswith("data:"):
+        try:
+            logo_data = logo_url.split(",")[1]
+            logo_bytes = base64.b64decode(logo_data)
+            logo_img = ImageReader(BytesIO(logo_bytes))
+            p.drawImage(logo_img, 30, height - 80, width=50, height=50, preserveAspectRatio=True)
+        except:
+            pass
+    
     p.setFillColor(HexColor("#FFFFFF"))
-    p.setFont("Helvetica-Bold", 24)
-    p.drawString(50, height - 60, f"{plan['duration']}-Day Growth Plan")
+    p.setFont("Helvetica-Bold", 20)
+    p.drawString(100 if logo_url else 50, height - 55, f"{plan['duration']}-Day Growth Plan")
     
     y = height - 140
     p.setFillColor(HexColor("#000000"))
@@ -876,7 +1480,7 @@ async def get_growth_plan_pdf(plan_id: str, user: User = Depends(get_current_use
     
     p.setFont("Helvetica", 9)
     p.setFillColor(HexColor("#666666"))
-    p.drawString(50, 30, f"Generated by InstaGrowth OS | {datetime.now().strftime('%Y-%m-%d')}")
+    p.drawString(50, 30, f"Generated by {company_name} | {datetime.now().strftime('%Y-%m-%d')}")
     
     p.save()
     buffer.seek(0)
@@ -900,10 +1504,7 @@ SUBSCRIPTION_PLANS = {
 async def get_plans():
     plans = []
     for plan_id, plan in SUBSCRIPTION_PLANS.items():
-        plans.append({
-            "plan_id": plan_id,
-            **plan
-        })
+        plans.append({"plan_id": plan_id, **plan})
     return plans
 
 @api_router.post("/checkout/session")
@@ -941,7 +1542,6 @@ async def create_checkout_session(request: Request, user: User = Depends(get_cur
     
     session = await stripe_checkout.create_checkout_session(checkout_request)
     
-    # Create pending transaction
     transaction_doc = {
         "transaction_id": f"txn_{uuid.uuid4().hex[:12]}",
         "user_id": user.user_id,
@@ -964,7 +1564,6 @@ async def get_checkout_status(session_id: str, user: User = Depends(get_current_
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
     status = await stripe_checkout.get_checkout_status(session_id)
     
-    # Update transaction
     if status.payment_status == "paid":
         txn = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
         if txn and txn.get("status") != "completed":
@@ -973,7 +1572,6 @@ async def get_checkout_status(session_id: str, user: User = Depends(get_current_
                 {"$set": {"status": "completed", "updated_at": datetime.now(timezone.utc).isoformat()}}
             )
             
-            # Update user plan
             plan_id = txn.get("plan_id")
             if plan_id in SUBSCRIPTION_PLANS:
                 plan = SUBSCRIPTION_PLANS[plan_id]
@@ -1060,6 +1658,7 @@ async def admin_get_stats(admin: User = Depends(require_admin)):
     total_users = await db.users.count_documents({})
     total_accounts = await db.instagram_accounts.count_documents({})
     total_audits = await db.audits.count_documents({})
+    total_teams = await db.teams.count_documents({})
     total_revenue = await db.payment_transactions.aggregate([
         {"$match": {"status": "completed"}},
         {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
@@ -1069,6 +1668,7 @@ async def admin_get_stats(admin: User = Depends(require_admin)):
         "total_users": total_users,
         "total_accounts": total_accounts,
         "total_audits": total_audits,
+        "total_teams": total_teams,
         "total_revenue": total_revenue[0]["total"] if total_revenue else 0,
         "users_by_plan": await db.users.aggregate([
             {"$group": {"_id": "$role", "count": {"$sum": 1}}}
@@ -1107,7 +1707,6 @@ async def get_dashboard_stats(user: User = Depends(get_current_user)):
     content_items = await db.content_items.count_documents({"user_id": user.user_id})
     growth_plans = await db.growth_plans.count_documents({"user_id": user.user_id})
     
-    # Get recent audits for chart
     recent_audits = await db.audits.find(
         {"user_id": user.user_id},
         {"_id": 0, "engagement_score": 1, "content_consistency": 1, "created_at": 1, "username": 1}
@@ -1127,7 +1726,7 @@ async def get_dashboard_stats(user: User = Depends(get_current_user)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "InstaGrowth OS API", "version": "1.0.0"}
+    return {"message": "InstaGrowth OS API", "version": "1.1.0"}
 
 # Include the router
 app.include_router(api_router)
