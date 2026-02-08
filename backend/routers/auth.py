@@ -270,6 +270,26 @@ async def logout(request: Request, response: Response):
     response.delete_cookie(key="session_token", path="/")
     return {"message": "Logged out"}
 
+@router.post("/complete-onboarding")
+async def complete_onboarding(goal: str = None, request: Request = None):
+    """Mark user onboarding as completed"""
+    from dependencies import get_current_user
+    db = get_database()
+    user = await get_current_user(request, db)
+    
+    update_data = {
+        "onboarding_completed": True,
+        "onboarding_goal": goal,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Onboarding completed", "goal": goal}
+
 
 # ==================== DATA DELETION ====================
 
