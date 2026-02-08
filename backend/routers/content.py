@@ -15,7 +15,17 @@ router = APIRouter(prefix="/content", tags=["Content Engine"])
 async def generate_content(data: ContentRequest, request: Request):
     db = get_database()
     user = await get_current_user(request, db)
-    await check_ai_usage(user, db)
+    
+    # Map content types to credit features
+    feature_map = {
+        "reels": "content_ideas",
+        "hooks": "hooks",
+        "captions": "caption",
+        "hashtags": "hashtags"
+    }
+    feature = feature_map.get(data.content_type, "content_ideas")
+    
+    await check_ai_usage(user, db, feature=feature)
     
     account = await db.instagram_accounts.find_one(
         {"account_id": data.account_id, "user_id": user.user_id}, {"_id": 0}
