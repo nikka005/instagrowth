@@ -178,51 +178,52 @@ const SettingsPage = ({ auth }) => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl bg-[#0F0F11]/80 border border-white/5"
+              className="space-y-6"
             >
-              <h3 className="font-display text-lg font-semibold text-white mb-6">Security Settings</h3>
-              
-              <div className="space-y-6">
-                <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                  <h4 className="font-medium text-white mb-4">Change Password</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-white/70 mb-2 block">Current Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          className="h-12 pl-12 bg-white/5 border-white/10 rounded-xl text-white"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-white/70 mb-2 block">New Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          className="h-12 pl-12 bg-white/5 border-white/10 rounded-xl text-white"
-                        />
-                      </div>
-                    </div>
-                    <Button className="h-11 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white">
-                      Update Password
-                    </Button>
-                  </div>
-                </div>
+              {/* Two-Factor Authentication */}
+              <TwoFactorSettings />
 
-                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                  <h4 className="font-medium text-red-400 mb-2">Danger Zone</h4>
-                  <p className="text-sm text-white/60 mb-4">
-                    Once you delete your account, there is no going back. Please be certain.
-                  </p>
-                  <Button variant="destructive" className="h-11 px-6 rounded-xl">
-                    Delete Account
+              {/* Password Change */}
+              <div className="p-6 rounded-2xl bg-[#0F0F11]/80 border border-white/5">
+                <h3 className="font-display text-lg font-semibold text-white mb-6">Change Password</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-white/70 mb-2 block">Current Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        className="h-12 pl-12 bg-white/5 border-white/10 rounded-xl text-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-white/70 mb-2 block">New Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        className="h-12 pl-12 bg-white/5 border-white/10 rounded-xl text-white"
+                      />
+                    </div>
+                  </div>
+                  <Button className="h-11 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white">
+                    Update Password
                   </Button>
                 </div>
+              </div>
+
+              {/* Danger Zone */}
+              <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20">
+                <h4 className="font-medium text-red-400 mb-2">Danger Zone</h4>
+                <p className="text-sm text-white/60 mb-4">
+                  Once you delete your account, there is no going back. Please be certain.
+                </p>
+                <Button variant="destructive" className="h-11 px-6 rounded-xl">
+                  Delete Account
+                </Button>
               </div>
             </motion.div>
           </TabsContent>
