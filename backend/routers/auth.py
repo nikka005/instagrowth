@@ -63,6 +63,12 @@ async def register(data: UserCreate, request: Request):
     await send_email(data.email, "Verify your InstaGrowth OS account", email_html)
     await create_notification(user_id, "system", "Welcome to InstaGrowth OS!", "Start by adding your first Instagram account.", "/accounts", db)
     
+    # Notify admins of new user registration
+    try:
+        await notify_new_user({"user_id": user_id, "email": data.email, "name": data.name, "role": "starter"})
+    except Exception as e:
+        pass  # Don't fail registration if notification fails
+    
     token = create_token(user_id, data.email)
     return {"token": token, "user": UserResponse(**user_doc)}
 
