@@ -43,7 +43,7 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 
 ## What's Been Implemented (Feb 2026)
 
-### Backend (FastAPI) v1.2.0
+### Backend (FastAPI) v2.0.0
 - [x] User registration and login with JWT
 - [x] Google OAuth integration via Emergent Auth
 - [x] Email verification flow (Resend integration)
@@ -59,15 +59,16 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - [x] Team management (create, invite, roles)
 - [x] Team settings (logo upload, brand color)
 - [x] Admin endpoints for user management
-- [x] **DM Templates** - Create, read, update, delete templates with variable extraction
-- [x] **Competitor Analysis** - AI-powered competitor insights and opportunities
-- [x] **A/B Testing** - Create tests, vote, determine winners
-- [x] **Posting Recommendations** - AI-based best time to post
-- [x] **Content Favorites** - Save/favorite content items
-- [x] **Notifications System** - Team invites, system alerts, plan upgrades
-- [x] **Rate Limiting** - Protect AI endpoints from abuse
-- [x] **CSV Export** - Export data for external analysis
-- [x] **One-Time Products** - Purchase individual reports and content packs
+- [x] DM Templates - Create, read, update, delete templates with variable extraction
+- [x] Competitor Analysis - AI-powered competitor insights and opportunities
+- [x] A/B Testing - Create tests, vote, determine winners
+- [x] Posting Recommendations - AI-based best time to post
+- [x] Content Favorites - Save/favorite content items
+- [x] Notifications System - Team invites, system alerts, plan upgrades
+- [x] Rate Limiting - Protect AI endpoints from abuse
+- [x] CSV Export - Export data for external analysis
+- [x] One-Time Products - Purchase individual reports and content packs
+- [x] **AI Timeout Handling** - Configurable timeouts (30s/60s/120s) for AI operations
 
 ### Frontend (React)
 - [x] Landing page with hero, features, pricing, testimonials
@@ -85,25 +86,46 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - [x] Team Management page (Agency/Enterprise only)
 - [x] Admin page (user management, stats)
 - [x] Dark mode premium theme (indigo/purple)
-- [x] **DM Templates Page** - Manage auto-reply templates
-- [x] **Competitor Analysis Page** - Analyze competitor accounts
-- [x] **A/B Testing Page** - Test content variants
+- [x] DM Templates Page - Manage auto-reply templates
+- [x] Competitor Analysis Page - Analyze competitor accounts
+- [x] A/B Testing Page - Test content variants
+- [x] **Mobile Sidebar Overlay** - Fixed z-index and backdrop blur
+
+### Modular Backend Structure (Created)
+```
+/app/backend/
+├── server.py          # Main application (existing, with timeout handling)
+├── models/            # Pydantic models
+│   └── __init__.py
+├── utils/             # Helper functions (hash, tokens, rate limiting)
+│   └── __init__.py
+├── services/          # AI and email services with timeout handling
+│   └── __init__.py
+├── routers/           # API routers (ready for migration)
+│   └── auth.py
+└── .env.example       # Configuration template with Resend setup guide
+```
 
 ### Testing Status (Feb 8, 2026)
 - Backend: 95.5% pass rate (21/22 tests)
 - Frontend: 100% pass rate
+- Mobile: Sidebar overlay working correctly
 - Test report: `/app/test_reports/iteration_3.json`
+
+## Completed Tasks (This Session)
+- [x] P0: Documented Resend API key configuration (.env.example created)
+- [x] P1: Created modular backend structure (models, utils, services, routers)
+- [x] P1: Fixed mobile sidebar overlay z-index issue
+- [x] P2: Added AI timeout handling (30s/60s/120s configurable)
 
 ## Prioritized Backlog
 
-### P0 - Critical (Next Sprint)
-- [ ] Configure production Resend API key for live emails
-- [ ] Mobile responsive fixes for sidebar overlay
+### P0 - Critical
+- [ ] Complete migration of server.py to use modular routers
 
 ### P1 - High Priority
-- [ ] Backend code refactoring - break down monolithic server.py into modules
-- [ ] Improve AI endpoint timeout handling for growth plans
 - [ ] Real Instagram API integration (when Meta API available)
+- [ ] Add more comprehensive error handling for AI failures
 
 ### P2 - Medium Priority
 - [ ] Performance analytics dashboard
@@ -115,22 +137,30 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - [ ] Mobile app (React Native)
 - [ ] Light mode toggle
 - [ ] Chrome extension for Instagram
+- [ ] Real-time notifications with WebSocket
 
 ## Next Tasks List
-1. Configure production Resend API key for emails
-2. Refactor server.py into modular structure using FastAPI APIRouter
-3. Fix mobile sidebar overlay z-index issue
-4. Add timeout handling for AI generation endpoints
-5. Enhance competitor analysis with more metrics
+1. Complete backend refactoring - move all routes to routers/
+2. Add WebSocket support for real-time notifications
+3. Enhance competitor analysis with more metrics
+4. Build scheduling recommendation engine
 
 ## Technical Notes
 - All AI calls use emergentintegrations library with EMERGENT_LLM_KEY
-- Email service uses Resend (needs production API key for live emails)
+- AI Timeout configuration: SHORT=30s, MEDIUM=60s, LONG=120s
+- Email service uses Resend (see .env.example for setup)
 - PDF generation uses ReportLab with white-label support
 - MongoDB collections: users, user_sessions, instagram_accounts, audits, content_items, growth_plans, payment_transactions, teams, team_members, password_resets, dm_templates, competitor_analyses, ab_tests, notifications, one_time_purchases
 - All API routes prefixed with /api
 - Instagram metrics are AI-estimated (MOCKED - not real Instagram API)
 
-## Known Issues
-1. Mobile menu overlay UI bug (P2) - z-index/state issue on smaller screens
-2. Flaky timeout on growth plan generation (P2) - long AI operations may timeout
+## Configuration Required
+See `/app/backend/.env.example` for complete configuration guide including:
+- Resend API key setup for production emails
+- Stripe API key configuration
+- JWT secret generation
+- MongoDB connection
+
+## Known Limitations
+1. Instagram data is AI-estimated (real API requires Meta approval)
+2. Email sending requires valid Resend API key (currently using placeholder)
