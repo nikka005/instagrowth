@@ -187,6 +187,11 @@ class InstaGrowthAPITester:
 
     def test_create_instagram_account(self):
         """Test creating an Instagram account"""
+        # Use demo user token for higher account limits
+        if hasattr(self, 'demo_token') and self.demo_token:
+            original_token = self.token
+            self.token = self.demo_token
+            
         data = {
             "username": f"test_account_{int(time.time())}",
             "niche": "Tech & Gadgets",
@@ -196,6 +201,16 @@ class InstaGrowthAPITester:
         if success and "account_id" in response:
             self.test_account_id = response["account_id"]
             self.log(f"   Created account: @{response.get('username')} ({self.test_account_id})")
+            # Check AI metrics were estimated
+            if response.get('follower_count'):
+                self.log(f"   AI Estimated Followers: {response.get('follower_count')}")
+            if response.get('engagement_rate'):
+                self.log(f"   AI Estimated Engagement: {response.get('engagement_rate')}%")
+
+        # Restore original token if we switched
+        if hasattr(self, 'demo_token') and self.demo_token:
+            self.token = original_token
+            
         return success
 
     def test_list_accounts(self):
