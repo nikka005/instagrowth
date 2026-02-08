@@ -315,9 +315,17 @@ class TestAdminAnnouncementsAPI:
     def setup(self):
         """Admin login before each test"""
         self.session = requests.Session()
-        login_resp = self.session.post(f"{BASE_URL}/api/admin-panel/auth/login", json=ADMIN_CREDS)
+        # Admin panel uses query params for login
+        login_resp = self.session.post(
+            f"{BASE_URL}/api/admin-panel/auth/login",
+            params={
+                "email": ADMIN_CREDS["email"],
+                "password": ADMIN_CREDS["password"],
+                "admin_code": ADMIN_CREDS["admin_code"]
+            }
+        )
         if login_resp.status_code != 200:
-            pytest.skip("Admin login failed")
+            pytest.skip(f"Admin login failed: {login_resp.text}")
         self.token = login_resp.json().get("token")
         self.headers = {"Authorization": f"Bearer {self.token}"}
     
