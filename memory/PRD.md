@@ -20,29 +20,26 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 ### 1. User Authentication (`/login`)
 - Email/Password with JWT
 - Google OAuth
+- **Two-Factor Authentication (TOTP) Support**
 - 7-day sessions
 
-### 2. Simple Admin Auth (`/admin-login`)
-- For basic admin dashboard
-- 3-factor: Email + Password + Security Code
-
-### 3. Full Admin Panel (`/admin-panel/login`)
+### 2. Admin Panel (`/admin-panel/login`)
 - Production-grade SaaS admin
-- 3-factor authentication
+- 3-factor authentication (Email + Password + Security Code)
 - **2FA Support (TOTP)**
 - **IP Whitelist**
-- Role-based access control
+- Role-based access control (super_admin, support, finance)
 - 8-hour sessions
 - Full audit logging
 
-## Admin Panel Features
+## Admin Panel Features - COMPLETED
 
 ### Dashboard
 - Total Users, Subscriptions, Accounts, AI Requests
 - Revenue chart (30 days)
 - New Users chart (30 days)
 - AI Usage trend
-- Users by Plan distribution
+- Users by Plan distribution (Pie chart)
 
 ### User Management
 - View all users with search/filter
@@ -63,6 +60,7 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - Edit pricing and limits
 - Set: Account limit, AI credits, Team seats, White-label
 - Enable/Disable plans
+- View subscriber counts
 
 ### Revenue Dashboard
 - MRR (Monthly Recurring Revenue)
@@ -89,11 +87,30 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - IP address tracking
 - Timestamps
 
-### Security
-- **2FA with TOTP**
+### Security - COMPLETED
+- **2FA with TOTP for admins**
 - **IP Whitelist per admin**
 - Backup codes
 - Session management
+
+## User 2FA - COMPLETED
+
+### Features
+- Enable/Disable 2FA in Settings > Security tab
+- QR code generation for authenticator apps
+- Manual entry key support
+- 10 backup codes generated on setup
+- Backup code regeneration with verification
+- 2FA required on login when enabled
+
+## Admin WebSocket - COMPLETED
+
+### Real-time Notifications
+- New user registrations
+- Subscription changes
+- AI usage alerts
+- System events
+- Notification dropdown in admin header
 
 ## Admin Credentials
 
@@ -104,14 +121,6 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 | Password | SuperAdmin123! |
 | Security Code | INSTAGROWTH_ADMIN_2024 |
 | Login URL | `/admin-panel/login` |
-
-### Simple Admin (Limited)
-| Field | Value |
-|-------|-------|
-| Email | admin@instagrowth.com |
-| Password | AdminPass123! |
-| Security Code | INSTAGROWTH_ADMIN_2024 |
-| Login URL | `/admin-login` |
 
 ## Admin Roles & Permissions
 
@@ -136,12 +145,14 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 ├── services/
 │   └── __init__.py              # AI + Email
 ├── routers/
-│   ├── auth.py                  # User auth
+│   ├── auth.py                  # User auth with 2FA
+│   ├── user_2fa.py              # User 2FA management
 │   ├── admin_auth.py            # Simple admin auth
 │   ├── admin_panel_auth.py      # Full admin panel auth + 2FA + IP
 │   ├── admin_panel_users.py     # User management
 │   ├── admin_panel_subscriptions.py  # Subs + Plans
 │   ├── admin_panel_dashboard.py # Dashboard + Analytics
+│   ├── admin_websocket.py       # Real-time notifications
 │   ├── accounts.py
 │   ├── audits.py
 │   ├── content.py
@@ -153,6 +164,7 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 │   ├── notifications.py
 │   ├── billing.py
 │   ├── admin.py
+│   ├── instagram_api.py         # Instagram API (placeholder)
 │   └── websocket.py
 └── .env.example
 ```
@@ -161,15 +173,15 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 
 ### User Pages
 - `/` - Landing Page
-- `/login` - User Login
+- `/login` - User Login (with 2FA support)
 - `/register` - User Registration
 - `/dashboard` - User Dashboard
 - `/accounts` - Instagram Accounts
 - `/audit` - AI Audit
 - `/content` - Content Engine
-- `/growth-planner` - Growth Plans
+- `/planner` - Growth Plans
 - `/billing` - Subscription
-- `/settings` - User Settings
+- `/settings` - User Settings (with 2FA in Security tab)
 - `/team` - Team Management
 - `/dm-templates` - DM Templates
 - `/competitors` - Competitor Analysis
@@ -179,51 +191,19 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - `/admin-panel/login` - Admin Login
 - `/admin-panel` - Dashboard
 - `/admin-panel/users` - User Management
-- `/admin-panel/subscriptions` - Subscriptions
 - `/admin-panel/plans` - Plan Management
-- `/admin-panel/instagram` - Instagram Accounts
-- `/admin-panel/ai-usage` - AI Usage
 - `/admin-panel/revenue` - Revenue Analytics
-- `/admin-panel/team` - Admin Team
-- `/admin-panel/settings` - System Settings
+- `/admin-panel/ai-usage` - AI Usage
 - `/admin-panel/logs` - Activity Logs
+- `/admin-panel/settings` - System Settings
 
-## API Endpoints
-
-### Admin Panel Auth (`/api/admin-panel/auth`)
-- `POST /login` - Login with 2FA support
-- `POST /setup-2fa` - Setup TOTP
-- `POST /verify-2fa` - Enable 2FA
-- `POST /disable-2fa` - Disable 2FA
-- `GET /me` - Current admin
-- `POST /logout` - Logout
-
-### Admin Panel Security (`/api/admin-panel/security`)
-- `GET /ip-whitelist` - Get whitelist
-- `POST /ip-whitelist` - Add IP
-- `DELETE /ip-whitelist/{ip}` - Remove IP
-
-### Admin Panel Users (`/api/admin-panel/users`)
-- `GET /` - List users
-- `GET /{id}` - User details
-- `PUT /{id}/plan` - Change plan
-- `PUT /{id}/status` - Block/Unblock
-- `POST /{id}/reset-password` - Reset password
-- `DELETE /{id}` - Delete user
-- `GET /export/csv` - Export CSV
-
-### Admin Panel Dashboard (`/api/admin-panel/dashboard`)
-- `GET /stats` - Overview stats
-- `GET /charts/revenue` - Revenue chart
-- `GET /charts/users` - Users chart
-- `GET /charts/ai-usage` - AI usage chart
-
-## Completed Features
+## Completed Features (December 2025)
 
 ### User Features
 - [x] User Authentication (JWT + Google OAuth)
 - [x] Email Verification
 - [x] Password Reset
+- [x] **Two-Factor Authentication (2FA/TOTP) for users**
 - [x] Instagram Account Management
 - [x] AI Audits with PDF Export
 - [x] Content Engine (4 types)
@@ -237,7 +217,7 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 
 ### Admin Panel Features
 - [x] Separate Admin Authentication
-- [x] **Two-Factor Authentication (2FA/TOTP)**
+- [x] **Two-Factor Authentication (2FA/TOTP) for admins**
 - [x] **IP Whitelist per Admin**
 - [x] Role-Based Access Control
 - [x] Dashboard with Charts
@@ -248,6 +228,7 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 - [x] System Settings
 - [x] Activity Logs
 - [x] CSV Export
+- [x] **Real-time WebSocket notifications**
 
 ## Subscription Plans
 
@@ -263,9 +244,10 @@ Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for 
 2. Requires valid Resend API key for emails
 3. Meta API requires approval for real Instagram data
 
-## Future Enhancements
-- [ ] Real Instagram API integration
-- [ ] Mobile app
-- [ ] WebSocket for admin real-time updates
-- [ ] Admin notifications
-- [ ] Two-factor for regular users
+## Future Enhancements (Backlog)
+- [ ] Real Instagram API integration (requires Meta API approval)
+- [ ] Mobile app (React Native)
+- [ ] Admin notifications panel
+- [ ] Light/Dark mode toggle
+- [ ] Bulk user operations in admin
+- [ ] Advanced analytics dashboard
