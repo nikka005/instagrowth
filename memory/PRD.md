@@ -208,3 +208,24 @@ PUT  /api/referrals/admin/payouts/{id}?status= - Process payout
 
 ## Last Updated
 February 8, 2025
+
+## Documentation Added
+- **User Help Center** (`/help`) - Complete user guide with:
+  - Getting Started guide
+  - Instagram account connection
+  - AI Audit walkthrough
+  - Content Engine tutorial
+  - Growth Planner guide
+  - DM Templates usage
+  - Competitor Analysis
+  - A/B Testing guide
+  - Referral Program explanation
+  - Billing & Plans overview
+  - Credit costs summary
+
+- **Admin Documentation** (Updated `/admin-panel/docs`) - Now includes:
+  - Referral Program management
+  - Email Automation system
+  - Announcements management
+  - Support Tickets handling
+  - All original sections updated
