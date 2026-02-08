@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   Users, DollarSign, BarChart3, Instagram, 
-  Shield, Search, Loader2
+  Shield, Search, Loader2, LogOut, History
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -15,23 +16,65 @@ import { toast } from "sonner";
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const AdminPage = ({ auth }) => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [updatingUser, setUpdatingUser] = useState(null);
+  const [adminUser, setAdminUser] = useState(null);
+  const [loginHistory, setLoginHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
-    if (auth.user?.role === "admin") {
-      fetchStats();
-      fetchUsers();
-    }
-  }, [auth.user]);
+    verifyAdminSession();
+  }, []);
 
-  const fetchStats = async () => {
+  const verifyAdminSession = async () => {
     try {
+      // First check if there's an admin token
+      const adminToken = localStorage.getItem("admin_token");
+      
+      if (adminToken) {
+        // Verify admin session with dedicated endpoint
+        const response = await fetch(`${API_URL}/api/admin-auth/verify`, {
+          credentials: "include",
+          headers: {
+            "Authorization": `Bearer ${adminToken}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAdminUser(data.admin);
+          fetchStats(adminToken);
+          fetchUsers(adminToken);
+          return;
+        }
+      }
+      
+      // Fallback to checking regular auth for admin role
+      if (auth.user?.role === "admin") {
+        setAdminUser(auth.user);
+        fetchStats();
+        fetchUsers();
+        return;
+      }
+      
+      // Not authenticated as admin - redirect to admin login
+      navigate("/admin-login");
+    } catch (error) {
+      console.error("Admin verification failed:", error);
+      navigate("/admin-login");
+    }
+  };
+
+  const fetchStats = async (token = null) => {
+    try {
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
       const response = await fetch(`${API_URL}/api/admin/stats`, {
         credentials: "include",
+        headers
       });
       if (response.ok) {
         const data = await response.json();
@@ -42,20 +85,56 @@ const AdminPage = ({ auth }) => {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (token = null) => {
     try {
+      const headers = token ? { "Authorization": `Bearer ${token}` } : {};
       const response = await fetch(`${API_URL}/api/admin/users`, {
         credentials: "include",
+        headers
       });
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        setUsers(data.users || data);
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchLoginHistory = async () => {
+    try {
+      const adminToken = localStorage.getItem("admin_token");
+      const headers = adminToken ? { "Authorization": `Bearer ${adminToken}` } : {};
+      const response = await fetch(`${API_URL}/api/admin-auth/login-history`, {
+        credentials: "include",
+        headers
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLoginHistory(data.login_history || []);
+        setShowHistory(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch login history:", error);
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    try {
+      const adminToken = localStorage.getItem("admin_token");
+      await fetch(`${API_URL}/api/admin-auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: adminToken ? { "Authorization": `Bearer ${adminToken}` } : {}
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_user");
+    navigate("/admin-login");
   };
 
   const updateUserRole = async (userId, newRole) => {
