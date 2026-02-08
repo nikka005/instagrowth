@@ -70,7 +70,7 @@ async def generate_content(data: ContentRequest, request: Request):
         }
         content_list = fallback.get(data.content_type, fallback["captions"])
     
-    await increment_ai_usage(user.user_id, db)
+    await increment_ai_usage(user.user_id, db, feature=feature)
     
     content_id = f"content_{uuid.uuid4().hex[:12]}"
     content_doc = {
