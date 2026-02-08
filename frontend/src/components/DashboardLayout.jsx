@@ -121,8 +121,9 @@ const DashboardLayout = ({ children, auth }) => {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/80 z-40 lg:hidden backdrop-blur-sm"
           onClick={() => setSidebarOpen(false)}
+          data-testid="mobile-overlay"
         />
       )}
 
