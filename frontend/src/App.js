@@ -20,6 +20,9 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import TeamPage from "./pages/TeamPage";
+import DMTemplatesPage from "./pages/DMTemplatesPage";
+import CompetitorAnalysisPage from "./pages/CompetitorAnalysisPage";
+import ABTestingPage from "./pages/ABTestingPage";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
