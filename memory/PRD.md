@@ -1,180 +1,152 @@
 # InstaGrowth OS - Product Requirements Document
 
 ## Original Problem Statement
-Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for freelancers and agencies. All-in-one AI wrapper that runs Instagram growth accounts like a pro manager.
+Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for freelancers and agencies.
 
 ## Architecture & Tech Stack
 - **Frontend**: React 19 + Tailwind CSS + Shadcn UI + Framer Motion
-- **Backend**: FastAPI + MongoDB (Motor async driver) - **NOW MODULAR**
+- **Backend**: FastAPI + MongoDB (Motor async driver) - **MODULAR**
 - **AI**: OpenAI GPT-5.2 via emergentintegrations library
-- **Auth**: JWT (email/password) + Emergent Google OAuth
-- **Payments**: Stripe subscriptions via emergentintegrations
-- **PDF Generation**: ReportLab
-- **Email**: Resend (for verification & password reset)
-- **Real-time**: WebSocket for notifications
+- **Auth**: JWT (email/password) + Google OAuth + **Separate Admin Auth**
+- **Payments**: Stripe subscriptions
+- **Email**: Resend
+- **Real-time**: WebSocket
 
-## Backend Architecture (v2.0.0 - MODULAR)
+## Authentication Systems
+
+### User Authentication
+- Email/Password with JWT tokens
+- Google OAuth via Emergent Auth
+- Session-based with cookies
+- Email verification required
+
+### Admin Authentication (SEPARATE)
+- Dedicated admin login page: `/admin-login`
+- Three-factor authentication:
+  1. Admin Email
+  2. Password
+  3. **Admin Security Code**
+- Shorter session (8 hours vs 7 days)
+- Login history tracking
+- Dedicated logout
+
+## Admin Credentials
+| Field | Value |
+|-------|-------|
+| Email | admin@instagrowth.com |
+| Password | AdminPass123! |
+| Admin Security Code | INSTAGROWTH_ADMIN_2024 |
+| Admin Login URL | `/admin-login` |
+
+## Backend Architecture (v2.0.0)
 ```
 /app/backend/
-├── server.py              # Main app - includes all routers
+├── server.py              # Main app
 ├── database.py            # MongoDB connection
-├── dependencies.py        # Auth & helper dependencies
+├── dependencies.py        # Auth helpers
 ├── models/
-│   └── __init__.py        # All Pydantic models
+│   └── __init__.py        # Pydantic models
 ├── utils/
-│   └── __init__.py        # Password hashing, tokens, rate limiting
+│   └── __init__.py        # Helpers
 ├── services/
-│   └── __init__.py        # AI services, email with timeout handling
+│   └── __init__.py        # AI + Email
 ├── routers/
-│   ├── __init__.py        # Router exports
-│   ├── auth.py            # Authentication endpoints
-│   ├── accounts.py        # Instagram account management
-│   ├── audits.py          # AI audit generation
+│   ├── auth.py            # User authentication
+│   ├── admin_auth.py      # **ADMIN AUTHENTICATION**
+│   ├── accounts.py        # Instagram accounts
+│   ├── audits.py          # AI audits
 │   ├── content.py         # Content engine
 │   ├── growth.py          # Growth planner
 │   ├── teams.py           # Team management
-│   ├── dm_templates.py    # DM template CRUD
+│   ├── dm_templates.py    # DM templates
 │   ├── competitors.py     # Competitor analysis
 │   ├── ab_testing.py      # A/B testing
-│   ├── notifications.py   # Notification system
+│   ├── notifications.py   # Notifications
 │   ├── billing.py         # Stripe billing
-│   ├── admin.py           # Admin dashboard
-│   └── websocket.py       # Real-time WebSocket
-└── .env.example           # Configuration template
+│   ├── admin.py           # Admin functions
+│   └── websocket.py       # Real-time
+└── .env.example
 ```
 
-## Admin Credentials
-| Email | Password | Role |
-|-------|----------|------|
-| admin@instagrowth.com | AdminPass123! | admin |
+## Admin API Endpoints
+
+### `/api/admin-auth`
+- `POST /login` - Admin login with security code
+- `GET /verify` - Verify admin session
+- `POST /logout` - Admin logout
+- `GET /login-history` - View admin login history
+
+### `/api/admin`
+- `GET /users` - List all users
+- `GET /stats` - Platform statistics
+- `PUT /users/{id}/role` - Update user role
+- `DELETE /users/{id}` - Delete user
+
+## Features Completed
+
+### Core Features
+- [x] User Authentication (JWT + Google OAuth)
+- [x] **Separate Admin Authentication System**
+- [x] Email Verification
+- [x] Password Reset
+- [x] Instagram Account Management
+- [x] AI Audits with PDF Export
+- [x] Content Engine (4 types)
+- [x] Growth Planner
+- [x] Team Management
+- [x] Stripe Billing (4 tiers)
+- [x] DM Templates
+- [x] Competitor Analysis
+- [x] A/B Testing
+- [x] WebSocket Notifications
+- [x] Admin Dashboard with User Management
+
+### Security Features
+- [x] Rate limiting on AI endpoints
+- [x] Admin security code requirement
+- [x] 8-hour admin session expiry
+- [x] Admin login history tracking
+- [x] Separate admin token storage
 
 ## Subscription Tiers
-| Plan | Price | Accounts | AI Usage | Team Features |
-|------|-------|----------|----------|---------------|
-| Starter | $19/mo | 1 | 10/mo | No |
-| Pro | $49/mo | 5 | 100/mo | No |
-| Agency | $149/mo | 25 | 500/mo | Yes |
-| Enterprise | $299/mo | 100 | 2000/mo | Yes |
+| Plan | Price | Accounts | AI Usage |
+|------|-------|----------|----------|
+| Starter | $19/mo | 1 | 10/mo |
+| Pro | $49/mo | 5 | 100/mo |
+| Agency | $149/mo | 25 | 500/mo |
+| Enterprise | $299/mo | 100 | 2000/mo |
 
-## Completed Features (Feb 2026)
+## URLs
+- Landing Page: `/`
+- User Login: `/login`
+- User Register: `/register`
+- **Admin Login: `/admin-login`**
+- Dashboard: `/dashboard`
+- Admin Dashboard: `/admin`
 
-### Backend (FastAPI) v2.0.0 - MODULAR ARCHITECTURE
-- [x] User registration and login with JWT
-- [x] Google OAuth integration via Emergent Auth
-- [x] Email verification flow (Resend integration)
-- [x] Password reset with secure tokens
-- [x] Instagram account CRUD operations
-- [x] AI-based Instagram metrics estimation
-- [x] AI Audit generation with OpenAI GPT-5.2
-- [x] AI Content generation (4 types)
-- [x] Growth Plan generation with extended timeout
-- [x] White-label PDF export for audits and plans
-- [x] Stripe subscription checkout
-- [x] Usage limits per plan
-- [x] Team management (create, invite, roles)
-- [x] Team settings (logo upload, brand color)
-- [x] Admin endpoints for user management
-- [x] DM Templates CRUD with variable extraction
-- [x] Competitor Analysis AI-powered
-- [x] A/B Testing with voting system
-- [x] Posting Recommendations AI-based
-- [x] Content Favorites system
-- [x] Notifications System
-- [x] Rate Limiting protection
-- [x] CSV Export functionality
-- [x] One-Time Products system
-- [x] **WebSocket real-time notifications**
-- [x] **AI Timeout Handling (30s/60s/120s)**
-- [x] **Modular router architecture**
-
-### Frontend (React)
-- [x] Landing page with hero, features, pricing, testimonials
-- [x] Login/Register with Google OAuth button
-- [x] Forgot Password page
-- [x] Reset Password page
-- [x] Email Verification page
-- [x] Dashboard with stats, quick actions, AI usage
-- [x] Accounts page with add/edit/delete
-- [x] AI Audit page with score visualization
-- [x] Content Engine with 4 tabs
-- [x] Growth Planner with task checklist
-- [x] Billing page with plan comparison
-- [x] Settings page (profile, notifications, security)
-- [x] Team Management page
-- [x] Admin page
-- [x] DM Templates Page
-- [x] Competitor Analysis Page
-- [x] A/B Testing Page
-- [x] Mobile Sidebar Overlay (fixed)
-
-## Completed Tasks This Session
-1. ✅ **P0: Backend Router Migration** - Split 2400+ line server.py into 13 modular routers
-2. ✅ **P0: Resend Configuration** - Created .env.example with setup instructions
-3. ✅ **P1: WebSocket Notifications** - Added real-time notification support
-4. ✅ **P2: AI Timeout Handling** - Configurable timeouts (SHORT=30s, MEDIUM=60s, LONG=120s)
-5. ✅ **P1: Mobile Sidebar Fix** - Fixed z-index and backdrop blur
-
-## API Endpoints Reference
-
-### Authentication (`/api/auth`)
-- POST `/register` - Register new user
-- POST `/login` - Login with email/password
-- POST `/session` - Create session from Google OAuth
-- GET `/me` - Get current user
-- POST `/logout` - Logout
-- POST `/verify-email` - Verify email token
-- POST `/forgot-password` - Request password reset
-- POST `/reset-password` - Reset password with token
-
-### Instagram Accounts (`/api/accounts`)
-- POST `/` - Create account
-- GET `/` - List accounts
-- GET `/{id}` - Get account
-- PUT `/{id}` - Update account
-- DELETE `/{id}` - Delete account
-- POST `/{id}/refresh-metrics` - Refresh AI metrics
-- GET `/{id}/posting-recommendations` - Get posting times
-
-### AI Features
-- POST `/api/audits` - Create AI audit
-- POST `/api/content/generate` - Generate content
-- POST `/api/growth-plans` - Create growth plan
-- POST `/api/competitors/analyze` - Analyze competitors
-- POST `/api/dm-templates/{id}/generate-reply` - Generate DM reply
-
-### Billing (`/api/billing`)
-- GET `/plans` - Get subscription plans
-- POST `/create-checkout-session` - Create Stripe checkout
-- GET `/subscription` - Get user subscription
-- POST `/upgrade` - Upgrade plan
-
-### WebSocket
-- WS `/api/ws/{user_id}` - Real-time notifications
-
-## Configuration Required
-
-### Required API Keys (set in `/app/backend/.env`)
+## Environment Variables
 ```
-RESEND_API_KEY=re_your_key_here      # For email delivery
-STRIPE_API_KEY=sk_test_your_key      # For payments  
-EMERGENT_LLM_KEY=your_key            # For AI features
-```
+# Admin Security
+ADMIN_SECRET_CODE=INSTAGROWTH_ADMIN_2024
 
-### Setup Resend for Production Emails
-1. Go to https://resend.com
-2. Create account and verify domain
-3. Generate API key
-4. Add to .env: `RESEND_API_KEY=re_xxxxx`
-5. Update: `SENDER_EMAIL=noreply@yourdomain.com`
+# Email
+RESEND_API_KEY=re_your_key
+SENDER_EMAIL=noreply@yourdomain.com
+
+# AI
+EMERGENT_LLM_KEY=your_key
+
+# Payments
+STRIPE_API_KEY=sk_test_your_key
+```
 
 ## Known Limitations
-1. Instagram data is AI-estimated (real API requires Meta approval)
-2. Email sending requires valid Resend API key
-3. Stripe webhook endpoint is placeholder (configure in Stripe dashboard)
+1. Instagram data is AI-estimated (MOCKED)
+2. Email requires valid Resend API key
+3. Stripe webhook is placeholder
 
 ## Future Enhancements
 - [ ] Real Instagram API integration
-- [ ] Mobile app (React Native)
-- [ ] Light mode toggle
-- [ ] Chrome extension
-- [ ] Zapier integration
+- [ ] Mobile app
+- [ ] Two-factor authentication for all users
+- [ ] Admin IP whitelist
