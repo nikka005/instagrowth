@@ -52,6 +52,7 @@ import ReferralsPage from "./pages/ReferralsPage";
 // Admin Panel additional imports
 import AdminReferralsPage from "./pages/admin-panel/ReferralsPage";
 import AdminAnnouncementsPage from "./pages/admin-panel/AnnouncementsPage";
+import EmailAutomationPage from "./pages/admin-panel/EmailAutomationPage";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
