@@ -65,11 +65,11 @@ async def get_instagram_auth_url(request: Request):
         upsert=True
     )
     
-    # Instagram Basic Display API scopes
-    scopes = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement"
+    # Instagram Business Login scopes
+    scopes = "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish"
     
     auth_url = (
-        f"{META_AUTH_URL}?"
+        f"{INSTAGRAM_AUTH_URL}?"
         f"client_id={app_id}&"
         f"redirect_uri={redirect_uri}&"
         f"scope={scopes}&"
