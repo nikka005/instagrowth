@@ -118,7 +118,7 @@ async def instagram_callback(code: str = None, state: str = None, error: str = N
             if token_response.status_code != 200:
                 error_data = token_response.json()
                 error_msg = error_data.get("error_message", "Failed to get access token")
-                return RedirectResponse(f"{frontend_url}/accounts?error={error_msg}")
+                return RedirectResponse(f"{site_url}/accounts?error={error_msg}")
             
             token_data = token_response.json()
             short_lived_token = token_data.get("access_token")
@@ -152,7 +152,7 @@ async def instagram_callback(code: str = None, state: str = None, error: str = N
             )
             
             if profile_response.status_code != 200:
-                return RedirectResponse(f"{frontend_url}/accounts?error=Failed to get Instagram profile")
+                return RedirectResponse(f"{site_url}/accounts?error=Failed to get Instagram profile")
             
             profile_data = profile_response.json()
             
@@ -192,10 +192,10 @@ async def instagram_callback(code: str = None, state: str = None, error: str = N
                 # Insert new account
                 await db.accounts.insert_one(account_doc)
             
-            return RedirectResponse(f"{frontend_url}/accounts?success=true&connected=1")
+            return RedirectResponse(f"{site_url}/accounts?success=true&connected=1")
             
     except Exception as e:
-        return RedirectResponse(f"{frontend_url}/accounts?error={str(e)}")
+        return RedirectResponse(f"{site_url}/accounts?error={str(e)}")
 
 @router.post("/{account_id}/refresh")
 async def refresh_instagram_data(account_id: str, request: Request):
