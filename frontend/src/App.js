@@ -54,6 +54,8 @@ import HelpCenterPage from "./pages/HelpCenterPage";
 import AdminReferralsPage from "./pages/admin-panel/ReferralsPage";
 import AdminAnnouncementsPage from "./pages/admin-panel/AnnouncementsPage";
 import EmailAutomationPage from "./pages/admin-panel/EmailAutomationPage";
+import AdminSubscriptionsPage from "./pages/admin-panel/SubscriptionsPage";
+import AdminInstagramAccountsPage from "./pages/admin-panel/InstagramAccountsPage";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
