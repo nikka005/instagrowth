@@ -46,12 +46,9 @@ async def get_instagram_auth_url(request: Request):
             detail="Instagram API not configured. Please contact admin to set up Meta API credentials."
         )
     
-    # Get the frontend URL for redirect
-    frontend_url = os.environ.get("REACT_APP_BACKEND_URL", "").replace("/api", "")
-    if not frontend_url:
-        frontend_url = request.headers.get("origin", "http://localhost:3000")
-    
-    redirect_uri = f"{frontend_url}/api/instagram/callback"
+    # Get the frontend URL for redirect - use SITE_URL or construct from request
+    site_url = os.environ.get("SITE_URL", "https://instagrowth.io")
+    redirect_uri = f"{site_url}/api/instagram/callback"
     
     # Store state for security
     state = f"{user.user_id}_{uuid.uuid4().hex[:8]}"
