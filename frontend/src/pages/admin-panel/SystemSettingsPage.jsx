@@ -333,7 +333,7 @@ const SettingsPage = ({ admin }) => {
         </div>
       </div>
 
-      {/* Meta/Instagram API Settings */}
+      {/* Instagram API Settings */}
       <div className="bg-[#1e293b] rounded-xl border border-white/5 p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -341,7 +341,7 @@ const SettingsPage = ({ admin }) => {
               <Instagram className="w-5 h-5 text-pink-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Meta / Instagram API Integration</h3>
+              <h3 className="text-lg font-semibold text-white">Instagram Business Login API</h3>
               <p className="text-white/50 text-sm">Connect to Instagram for real account data</p>
             </div>
           </div>
@@ -369,7 +369,7 @@ const SettingsPage = ({ admin }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-2">Meta App ID</label>
+            <label className="block text-sm font-medium text-white/70 mb-2">Instagram App ID</label>
             <input
               type="text"
               value={settings.meta_app_id}
@@ -377,10 +377,11 @@ const SettingsPage = ({ admin }) => {
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none font-mono"
               placeholder="123456789012345"
             />
+            <p className="text-xs text-white/40 mt-1">From Meta Developer → API setup with Instagram login</p>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-2">Meta App Secret</label>
+            <label className="block text-sm font-medium text-white/70 mb-2">Instagram App Secret</label>
             <input
               type="password"
               value={settings.meta_app_secret}
@@ -388,9 +389,10 @@ const SettingsPage = ({ admin }) => {
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none font-mono"
               placeholder="abc123def456..."
             />
+            <p className="text-xs text-white/40 mt-1">From Meta Developer → API setup with Instagram login</p>
           </div>
           
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium text-white/70 mb-2">Long-Lived Access Token</label>
             <input
               type="password"
@@ -399,17 +401,7 @@ const SettingsPage = ({ admin }) => {
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none font-mono"
               placeholder="EAAxxxxxxx..."
             />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-2">Instagram Business Account ID</label>
-            <input
-              type="text"
-              value={settings.instagram_business_id}
-              onChange={(e) => setSettings({ ...settings, instagram_business_id: e.target.value })}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none font-mono"
-              placeholder="17841400000000000"
-            />
+            <p className="text-xs text-white/40 mt-1">Generate from Graph API Explorer and exchange for long-lived token</p>
           </div>
         </div>
 
@@ -417,12 +409,12 @@ const SettingsPage = ({ admin }) => {
           <h4 className="text-sm font-medium text-pink-400 mb-2">Setup Instructions:</h4>
           <ol className="text-xs text-white/60 space-y-1 list-decimal list-inside">
             <li>Go to <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer" className="text-pink-400 hover:underline">Meta for Developers</a> and create a new app (Business type)</li>
-            <li>Add "Instagram Graph API" product to your app</li>
-            <li>Go to Settings → Basic to get your App ID and App Secret</li>
-            <li>Generate a User Access Token from Graph API Explorer</li>
-            <li>Exchange for a Long-Lived Token (valid 60 days)</li>
-            <li>Get your Instagram Business Account ID from the API</li>
-            <li>Required permissions: instagram_basic, instagram_content_publish, pages_read_engagement</li>
+            <li>Go to <strong>Use cases</strong> → <strong>Authenticate and request data from users with Instagram accounts</strong></li>
+            <li>Click <strong>Customize</strong> and add the Instagram Business Login product</li>
+            <li>Copy your <strong>Instagram App ID</strong> and <strong>Instagram App Secret</strong></li>
+            <li>Add <strong>Valid OAuth Redirect URI</strong>: <code className="bg-white/10 px-1 rounded">https://instagrowth.io/api/instagram/callback</code></li>
+            <li>Generate a User Access Token from Graph API Explorer with scopes: instagram_business_basic, instagram_business_content_publish</li>
+            <li>Switch your app to <strong>Live</strong> mode when ready for production</li>
           </ol>
         </div>
 
