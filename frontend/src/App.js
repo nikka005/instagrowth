@@ -382,6 +382,7 @@ function AppRouter({ auth }) {
       <Route path="/admin-panel/email-automation" element={<AdminPanelLayout><EmailAutomationPage /></AdminPanelLayout>} />
       <Route path="/admin-panel/subscriptions" element={<AdminPanelLayout><AdminSubscriptionsPage /></AdminPanelLayout>} />
       <Route path="/admin-panel/instagram" element={<AdminPanelLayout><AdminInstagramAccountsPage /></AdminPanelLayout>} />
+      <Route path="/admin-panel/team" element={<AdminPanelLayout><AdminTeamManagementPage /></AdminPanelLayout>} />
       
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
