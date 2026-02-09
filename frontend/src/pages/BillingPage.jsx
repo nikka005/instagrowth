@@ -28,9 +28,14 @@ const BillingPage = ({ auth }) => {
       const response = await fetch(`${API_URL}/api/plans`, {
         credentials: "include",
       });
-      if (response.ok) {
-        const data = await response.json();
-        setPlans(data);
+      const text = await response.text();
+      if (response.ok && text) {
+        try {
+          const data = JSON.parse(text);
+          setPlans(data);
+        } catch {
+          console.error("Failed to parse plans response");
+        }
       }
     } catch (error) {
       console.error("Failed to fetch plans:", error);
