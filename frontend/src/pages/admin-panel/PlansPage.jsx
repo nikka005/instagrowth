@@ -146,22 +146,29 @@ const PlansPage = ({ admin }) => {
               <span className="text-white/50">/{plan.billing_cycle}</span>
             </div>
 
-            <div className="space-y-2 mb-6">
+            {/* Features List */}
+            {plan.features && plan.features.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {plan.features.slice(0, 4).map((feature, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span className="text-white/70">{feature}</span>
+                  </div>
+                ))}
+                {plan.features.length > 4 && (
+                  <p className="text-white/40 text-xs">+{plan.features.length - 4} more features</p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2 mb-6 pt-4 border-t border-white/10">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/50">Accounts</span>
-                <span className="text-white">{plan.account_limit}</span>
+                <span className="text-white">{plan.limits?.accounts || plan.account_limit || 0}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/50">AI Credits</span>
-                <span className="text-white">{plan.ai_limit}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white/50">Team Members</span>
-                <span className="text-white">{plan.team_limit || 0}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white/50">White Label</span>
-                <span className="text-white">{plan.white_label ? 'Yes' : 'No'}</span>
+                <span className="text-white">{plan.limits?.ai_credits || plan.ai_limit || 0}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/50">Subscribers</span>
