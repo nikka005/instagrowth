@@ -82,24 +82,24 @@ async def instagram_callback(code: str = None, state: str = None, error: str = N
     db = get_database()
     
     # Get frontend URL for redirects
-    frontend_url = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:3000").replace("/api", "")
+    site_url = os.environ.get("SITE_URL", "https://instagrowth.io")
     
     if error:
-        return RedirectResponse(f"{frontend_url}/accounts?error={error_description or error}")
+        return RedirectResponse(f"{site_url}/accounts?error={error_description or error}")
     
     if not code or not state:
-        return RedirectResponse(f"{frontend_url}/accounts?error=Missing authorization code")
+        return RedirectResponse(f"{site_url}/accounts?error=Missing authorization code")
     
     # Verify state
     oauth_state = await db.oauth_states.find_one({"state": state})
     if not oauth_state:
-        return RedirectResponse(f"{frontend_url}/accounts?error=Invalid state")
+        return RedirectResponse(f"{site_url}/accounts?error=Invalid state")
     
     user_id = oauth_state["user_id"]
     await db.oauth_states.delete_one({"state": state})
     
     app_id, app_secret = await get_meta_credentials()
-    redirect_uri = f"{frontend_url}/api/instagram/callback"
+    redirect_uri = f"{site_url}/api/instagram/callback"
     
     try:
         # Exchange code for access token using Instagram API
