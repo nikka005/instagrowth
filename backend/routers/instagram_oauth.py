@@ -105,6 +105,102 @@ async def instagram_callback(code: str = None, state: str = None, error: str = N
     redirect_uri = f"{frontend_url}/api/instagram/callback"
     
     try:
+        # Exchange code for access token using Instagram API
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                INSTAGRAM_TOKEN_URL,
+                data={
+                    "client_id": app_id,
+                    "client_secret": app_secret,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": redirect_uri,
+                    "code": code
+                }
+            )
+            
+            if token_response.status_code != 200:
+                error_data = token_response.json()
+                error_msg = error_data.get("error_message", "Failed to get access token")
+                return RedirectResponse(f"{frontend_url}/accounts?error={error_msg}")
+            
+            token_data = token_response.json()
+            short_lived_token = token_data.get("access_token")
+            instagram_user_id = token_data.get("user_id")
+            
+            # Exchange for long-lived token
+            long_token_response = await client.get(
+                f"{INSTAGRAM_GRAPH_URL}/access_token",
+                params={
+                    "grant_type": "ig_exchange_token",
+                    "client_secret": app_secret,
+                    "access_token": short_lived_token
+                }
+            )
+            
+            if long_token_response.status_code == 200:
+                long_token_data = long_token_response.json()
+                access_token = long_token_data.get("access_token", short_lived_token)
+                expires_in = long_token_data.get("expires_in", 5184000)  # 60 days default
+            else:
+                access_token = short_lived_token
+                expires_in = 3600
+            
+            # Get Instagram user profile
+            profile_response = await client.get(
+                f"{INSTAGRAM_GRAPH_URL}/me",
+                params={
+                    "fields": "id,username,account_type,media_count",
+                    "access_token": access_token
+                }
+            )
+            
+            if profile_response.status_code != 200:
+                return RedirectResponse(f"{frontend_url}/accounts?error=Failed to get Instagram profile")
+            
+            profile_data = profile_response.json()
+            
+            # Save the connected account
+            account_id = f"ig_{uuid.uuid4().hex[:12]}"
+            account_doc = {
+                "account_id": account_id,
+                "user_id": user_id,
+                "instagram_user_id": instagram_user_id,
+                "username": profile_data.get("username"),
+                "account_type": profile_data.get("account_type"),
+                "media_count": profile_data.get("media_count"),
+                "access_token": access_token,
+                "token_expires_at": datetime.now(timezone.utc).timestamp() + expires_in,
+                "connected_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True
+            }
+            
+            # Check if account already exists
+            existing = await db.accounts.find_one({
+                "user_id": user_id,
+                "instagram_user_id": instagram_user_id
+            })
+            
+            if existing:
+                # Update existing account
+                await db.accounts.update_one(
+                    {"_id": existing["_id"]},
+                    {"$set": {
+                        "access_token": access_token,
+                        "token_expires_at": account_doc["token_expires_at"],
+                        "media_count": profile_data.get("media_count"),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+            else:
+                # Insert new account
+                await db.accounts.insert_one(account_doc)
+            
+            return RedirectResponse(f"{frontend_url}/accounts?success=true&connected=1")
+    
+    app_id, app_secret = await get_meta_credentials()
+    redirect_uri = f"{frontend_url}/api/instagram/callback"
+    
+    try:
         # Exchange code for access token
         async with httpx.AsyncClient() as client:
             token_response = await client.get(
