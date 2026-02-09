@@ -17,13 +17,32 @@ AI_TIMEOUT_SHORT = 30   # For simple operations (metrics, DM replies)
 AI_TIMEOUT_MEDIUM = 60  # For standard operations (content, audits)
 AI_TIMEOUT_LONG = 120   # For complex operations (growth plans)
 
-if RESEND_API_KEY and RESEND_API_KEY != "re_placeholder_key":
-    resend.api_key = RESEND_API_KEY
+async def get_resend_api_key():
+    """Get Resend API key from env or database settings"""
+    global RESEND_API_KEY
+    if RESEND_API_KEY and RESEND_API_KEY != "re_placeholder_key":
+        return RESEND_API_KEY
+    
+    # Try to get from database
+    try:
+        from database import get_database
+        db = get_database()
+        settings = await db.system_settings.find_one({"setting_id": "global"}, {"_id": 0})
+        if settings and settings.get("resend_api_key"):
+            return settings.get("resend_api_key")
+    except Exception as e:
+        logger.warning(f"Could not get Resend API key from database: {e}")
+    
+    return RESEND_API_KEY
 
 async def send_email(to_email: str, subject: str, html_content: str):
-    if not RESEND_API_KEY or RESEND_API_KEY == "re_placeholder_key":
+    api_key = await get_resend_api_key()
+    
+    if not api_key or api_key == "re_placeholder_key":
         logger.warning(f"Email not sent (no API key configured): {subject} to {to_email}")
-        return {"status": "skipped", "message": "Email service not configured. Set RESEND_API_KEY in .env"}
+        return {"status": "skipped", "message": "Email service not configured. Set RESEND_API_KEY in System Settings"}
+    
+    resend.api_key = api_key
     
     params = {
         "from": SENDER_EMAIL,
