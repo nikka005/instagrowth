@@ -92,12 +92,18 @@ const BillingPage = ({ auth }) => {
         }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Failed to create checkout session");
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('Server returned invalid response');
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to create checkout session");
+      }
+
       window.location.href = data.url;
     } catch (error) {
       toast.error(error.message);
