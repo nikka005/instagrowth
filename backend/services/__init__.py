@@ -35,8 +35,25 @@ async def get_resend_api_key():
     
     return RESEND_API_KEY
 
+async def get_sender_email():
+    """Get sender email from env or database settings"""
+    global SENDER_EMAIL
+    
+    # Try to get from database first
+    try:
+        from database import get_database
+        db = get_database()
+        settings = await db.system_settings.find_one({"setting_id": "global"}, {"_id": 0})
+        if settings and settings.get("sender_email"):
+            return settings.get("sender_email")
+    except Exception as e:
+        logger.warning(f"Could not get sender email from database: {e}")
+    
+    return SENDER_EMAIL
+
 async def send_email(to_email: str, subject: str, html_content: str):
     api_key = await get_resend_api_key()
+    sender = await get_sender_email()
     
     if not api_key or api_key == "re_placeholder_key":
         logger.warning(f"Email not sent (no API key configured): {subject} to {to_email}")
@@ -45,7 +62,7 @@ async def send_email(to_email: str, subject: str, html_content: str):
     resend.api_key = api_key
     
     params = {
-        "from": SENDER_EMAIL,
+        "from": sender,
         "to": [to_email],
         "subject": subject,
         "html": html_content
