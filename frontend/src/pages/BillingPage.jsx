@@ -55,11 +55,18 @@ const BillingPage = ({ auth }) => {
           credentials: "include",
         });
         
+        const text = await response.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          setTimeout(() => pollStatus(attempts + 1), 2000);
+          return;
+        }
+        
         if (response.ok) {
-          const data = await response.json();
           if (data.payment_status === "paid") {
             toast.success("Payment successful! Your plan has been upgraded.");
-            // Refresh auth to get updated user data
             await auth.checkAuth();
             window.history.replaceState(null, "", "/billing");
             return;
@@ -69,7 +76,6 @@ const BillingPage = ({ auth }) => {
           }
         }
         
-        // Continue polling
         setTimeout(() => pollStatus(attempts + 1), 2000);
       } catch (error) {
         console.error("Error checking payment status:", error);
