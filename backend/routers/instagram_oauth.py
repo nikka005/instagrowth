@@ -90,12 +90,14 @@ async def get_instagram_auth_url(request: Request):
     return {"auth_url": auth_url, "state": state}
 
 @router.get("/callback")
-async def instagram_callback(code: str = None, state: str = None, error: str = None, error_description: str = None):
+async def instagram_callback(request: Request, code: str = None, state: str = None, error: str = None, error_description: str = None):
     """Handle Instagram OAuth callback"""
     db = get_database()
     
-    # Get frontend URL for redirects
+    # Get site URL for redirects - hardcode for production
     site_url = os.environ.get("SITE_URL", "https://instagrowth.io")
+    if not site_url or "localhost" in site_url:
+        site_url = "https://instagrowth.io"
     
     if error:
         return RedirectResponse(f"{site_url}/accounts?error={error_description or error}")
