@@ -620,3 +620,39 @@ async def update_admin_status(admin_id: str, status: str, request: Request):
     await log_admin_action(admin, f"admin_{status}", "admin", admin_id, {}, get_client_ip(request))
     
     return {"message": f"Admin {status}"}
+
+
+# ==================== SUBSCRIPTIONS ====================
+
+@router.get("/subscriptions")
+async def get_all_subscriptions(request: Request):
+    """Get all user subscriptions"""
+    db = get_database()
+    admin = await verify_admin_token(request)
+    
+    subscriptions = []
+    async for sub in db.subscriptions.find({}, {"_id": 0}):
+        # Get user email
+        user = await db.users.find_one({"user_id": sub.get("user_id")}, {"email": 1, "_id": 0})
+        sub["user_email"] = user.get("email") if user else "Unknown"
+        subscriptions.append(sub)
+    
+    return {"subscriptions": subscriptions}
+
+# ==================== INSTAGRAM ACCOUNTS ====================
+
+@router.get("/instagram-accounts")
+async def get_all_instagram_accounts(request: Request):
+    """Get all connected Instagram accounts across all users"""
+    db = get_database()
+    admin = await verify_admin_token(request)
+    
+    accounts = []
+    async for acc in db.instagram_accounts.find({}, {"_id": 0, "access_token": 0}):
+        # Get user email
+        user = await db.users.find_one({"user_id": acc.get("user_id")}, {"email": 1, "_id": 0})
+        acc["user_email"] = user.get("email") if user else "Unknown"
+        accounts.append(acc)
+    
+    return {"accounts": accounts}
+
