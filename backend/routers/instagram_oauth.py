@@ -10,9 +10,11 @@ from dependencies import get_current_user
 
 router = APIRouter(prefix="/instagram", tags=["Instagram API"])
 
-# Meta API endpoints
-META_AUTH_URL = "https://www.facebook.com/v18.0/dialog/oauth"
-META_TOKEN_URL = "https://graph.facebook.com/v18.0/oauth/access_token"
+# Instagram Business Login API endpoints
+INSTAGRAM_AUTH_URL = "https://www.instagram.com/oauth/authorize"
+INSTAGRAM_TOKEN_URL = "https://api.instagram.com/oauth/access_token"
+INSTAGRAM_GRAPH_URL = "https://graph.instagram.com"
+# Meta Graph API for business accounts
 META_GRAPH_URL = "https://graph.facebook.com/v18.0"
 
 async def get_meta_credentials():
