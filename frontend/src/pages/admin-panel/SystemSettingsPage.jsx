@@ -479,6 +479,20 @@ const SettingsPage = ({ admin }) => {
             Get your API key from <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Resend Dashboard</a>
           </p>
         </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-white/70 mb-2">Sender Email</label>
+          <input
+            type="email"
+            value={settings.sender_email || ''}
+            onChange={(e) => setSettings({ ...settings, sender_email: e.target.value })}
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none"
+            placeholder="noreply@yourdomain.com"
+          />
+          <p className="text-white/40 text-xs mt-1">
+            Must be from a domain verified in Resend. Go to <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Domains</a> to verify.
+          </p>
+        </div>
       </div>
 
       {/* Security Warning */}
