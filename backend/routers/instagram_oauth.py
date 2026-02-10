@@ -174,41 +174,62 @@ async def instagram_callback(request: Request, code: str = None, state: str = No
             
             profile_data = profile_response.json()
             
-            # Save the connected account
+            # Save the connected account to instagram_accounts collection
             account_id = f"ig_{uuid.uuid4().hex[:12]}"
+            username = profile_data.get("username", "")
+            
             account_doc = {
                 "account_id": account_id,
                 "user_id": user_id,
-                "instagram_user_id": instagram_user_id,
-                "username": profile_data.get("username"),
+                "team_id": None,
+                "instagram_user_id": str(instagram_user_id),
+                "instagram_id": str(instagram_user_id),  # For Graph API calls
+                "username": username,
+                "niche": "Other",  # Default niche, user can update later
+                "notes": f"Connected via Instagram API on {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
                 "account_type": profile_data.get("account_type"),
+                "follower_count": None,
+                "following_count": None,
                 "media_count": profile_data.get("media_count"),
+                "engagement_rate": None,
+                "estimated_reach": None,
+                "posting_frequency": None,
+                "best_posting_time": None,
+                "profile_picture": None,
                 "access_token": access_token,
                 "token_expires_at": datetime.now(timezone.utc).timestamp() + expires_in,
-                "connected_at": datetime.now(timezone.utc).isoformat(),
-                "is_active": True
+                "connection_status": "connected",
+                "last_audit_date": None,
+                "status": "active",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "connected_at": datetime.now(timezone.utc).isoformat()
             }
             
-            # Check if account already exists
-            existing = await db.accounts.find_one({
+            # Check if account already exists in instagram_accounts collection
+            existing = await db.instagram_accounts.find_one({
                 "user_id": user_id,
-                "instagram_user_id": instagram_user_id
+                "instagram_user_id": str(instagram_user_id)
             })
             
             if existing:
-                # Update existing account
-                await db.accounts.update_one(
+                # Update existing account with new token
+                logger.info(f"Updating existing Instagram account for user {user_id}: @{username}")
+                await db.instagram_accounts.update_one(
                     {"_id": existing["_id"]},
                     {"$set": {
                         "access_token": access_token,
                         "token_expires_at": account_doc["token_expires_at"],
                         "media_count": profile_data.get("media_count"),
+                        "connection_status": "connected",
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )
+                logger.info(f"Successfully updated account @{username}")
             else:
                 # Insert new account
-                await db.accounts.insert_one(account_doc)
+                logger.info(f"Creating new Instagram account for user {user_id}: @{username}")
+                await db.instagram_accounts.insert_one(account_doc)
+                logger.info(f"Successfully created account @{username} with id {account_id}")
             
             return RedirectResponse(f"{site_url}/accounts?success=true&connected=1")
             
