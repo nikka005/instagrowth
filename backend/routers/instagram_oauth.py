@@ -255,10 +255,11 @@ async def refresh_instagram_data(account_id: str, request: Request):
     
     try:
         async with httpx.AsyncClient() as client:
+            # Use Instagram Graph API (not Meta Graph API) for basic profile
             response = await client.get(
-                f"{META_GRAPH_URL}/{account['instagram_id']}",
+                f"{INSTAGRAM_GRAPH_URL}/me",
                 params={
-                    "fields": "username,name,profile_picture_url,followers_count,follows_count,media_count,biography",
+                    "fields": "id,username,account_type,media_count",
                     "access_token": account["access_token"]
                 }
             )
@@ -266,6 +267,7 @@ async def refresh_instagram_data(account_id: str, request: Request):
             if response.status_code != 200:
                 error_data = response.json()
                 error_msg = error_data.get("error", {}).get("message", "Failed to refresh data")
+                logger.error(f"Instagram API error: {error_msg}")
                 raise HTTPException(status_code=400, detail=error_msg)
             
             data = response.json()
@@ -274,20 +276,15 @@ async def refresh_instagram_data(account_id: str, request: Request):
                 {"account_id": account_id},
                 {"$set": {
                     "username": data.get("username", account["username"]),
-                    "name": data.get("name"),
-                    "profile_picture": data.get("profile_picture_url"),
-                    "follower_count": data.get("followers_count"),
-                    "following_count": data.get("follows_count"),
                     "media_count": data.get("media_count"),
-                    "biography": data.get("biography"),
+                    "account_type": data.get("account_type"),
                     "last_refreshed": datetime.now(timezone.utc).isoformat()
                 }}
             )
             
             return {
                 "message": "Account refreshed",
-                "followers": data.get("followers_count"),
-                "following": data.get("follows_count"),
+                "username": data.get("username"),
                 "media_count": data.get("media_count")
             }
             
