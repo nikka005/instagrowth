@@ -9,13 +9,111 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor
 from reportlab.lib.utils import ImageReader
 import base64
+import httpx
+import logging
 
 from models import Audit, AuditRequest
 from database import get_database
 from dependencies import get_current_user, check_ai_usage, increment_ai_usage
 from services import generate_ai_content, AI_TIMEOUT_MEDIUM
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/audits", tags=["AI Audits"])
+
+INSTAGRAM_GRAPH_URL = "https://graph.instagram.com"
+
+async def fetch_instagram_media(access_token: str, limit: int = 25):
+    """Fetch recent media/posts from Instagram API"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{INSTAGRAM_GRAPH_URL}/me/media",
+                params={
+                    "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count",
+                    "limit": limit,
+                    "access_token": access_token
+                },
+                timeout=15
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("data", [])
+            else:
+                logger.warning(f"Failed to fetch media: {response.status_code} - {response.text}")
+                return []
+    except Exception as e:
+        logger.error(f"Error fetching Instagram media: {e}")
+        return []
+
+def analyze_posts_data(posts: list, follower_count: int):
+    """Analyze real post data to calculate engagement metrics"""
+    if not posts:
+        return {
+            "total_posts": 0,
+            "avg_likes": 0,
+            "avg_comments": 0,
+            "engagement_rate": 0,
+            "post_types": {},
+            "posting_frequency": "Unknown",
+            "best_performing_post": None,
+            "worst_performing_post": None,
+            "captions_analysis": []
+        }
+    
+    total_likes = 0
+    total_comments = 0
+    post_types = {"IMAGE": 0, "VIDEO": 0, "CAROUSEL_ALBUM": 0}
+    posts_with_engagement = []
+    captions = []
+    
+    for post in posts:
+        likes = post.get("like_count", 0)
+        comments = post.get("comments_count", 0)
+        total_likes += likes
+        total_comments += comments
+        
+        media_type = post.get("media_type", "IMAGE")
+        post_types[media_type] = post_types.get(media_type, 0) + 1
+        
+        engagement = likes + comments
+        posts_with_engagement.append({
+            "id": post.get("id"),
+            "caption": post.get("caption", "")[:100],
+            "likes": likes,
+            "comments": comments,
+            "engagement": engagement,
+            "type": media_type,
+            "timestamp": post.get("timestamp")
+        })
+        
+        if post.get("caption"):
+            captions.append(post.get("caption", "")[:200])
+    
+    avg_likes = total_likes / len(posts) if posts else 0
+    avg_comments = total_comments / len(posts) if posts else 0
+    
+    # Calculate engagement rate
+    engagement_rate = 0
+    if follower_count and follower_count > 0:
+        engagement_rate = ((avg_likes + avg_comments) / follower_count) * 100
+    
+    # Sort by engagement
+    posts_with_engagement.sort(key=lambda x: x["engagement"], reverse=True)
+    
+    return {
+        "total_posts_analyzed": len(posts),
+        "total_likes": total_likes,
+        "total_comments": total_comments,
+        "avg_likes": round(avg_likes, 1),
+        "avg_comments": round(avg_comments, 1),
+        "engagement_rate": round(engagement_rate, 2),
+        "post_types": post_types,
+        "best_performing_post": posts_with_engagement[0] if posts_with_engagement else None,
+        "worst_performing_post": posts_with_engagement[-1] if posts_with_engagement else None,
+        "recent_captions": captions[:5]
+    }
 
 @router.post("", response_model=Audit)
 async def create_audit(data: AuditRequest, request: Request):
@@ -29,22 +127,58 @@ async def create_audit(data: AuditRequest, request: Request):
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    system_message = """You are an Instagram growth expert. Provide detailed analysis in JSON:
-    - engagement_score (0-100)
-    - shadowban_risk (low/medium/high)
-    - content_consistency (0-100)
-    - estimated_followers (int)
-    - estimated_engagement_rate (float)
-    - growth_mistakes (array of 3-5 mistakes)
-    - recommendations (array of 5-7 recommendations)
-    - roadmap (object with week1-4 arrays)
-    Response must be valid JSON only."""
+    # Fetch real Instagram data if access token available
+    posts_data = []
+    posts_analysis = {}
     
-    prompt = f"""Analyze Instagram account:
-    Username: @{account['username']}
-    Niche: {account['niche']}
-    Notes: {account.get('notes', 'None')}
-    Current followers: {account.get('follower_count', 'Unknown')}"""
+    if account.get("access_token"):
+        logger.info(f"Fetching real Instagram data for @{account['username']}")
+        posts_data = await fetch_instagram_media(account["access_token"], limit=25)
+        posts_analysis = analyze_posts_data(posts_data, account.get("follower_count", 0))
+        logger.info(f"Analyzed {posts_analysis.get('total_posts_analyzed', 0)} posts")
+    
+    system_message = """You are an Instagram growth expert analyzing REAL account data. 
+    Provide detailed analysis based on the actual metrics provided.
+    Response must be valid JSON with:
+    - engagement_score (0-100, based on real engagement rate)
+    - shadowban_risk (low/medium/high, based on engagement patterns)
+    - content_consistency (0-100, based on posting patterns)
+    - growth_mistakes (array of 3-5 specific mistakes based on the data)
+    - recommendations (array of 5-7 actionable recommendations)
+    - roadmap (object with week1-4 arrays of specific tasks)
+    - content_analysis (brief analysis of their caption style)
+    Response must be valid JSON only, no markdown."""
+    
+    # Build detailed prompt with real data
+    prompt = f"""Analyze this Instagram account with REAL data:
+
+ACCOUNT INFO:
+- Username: @{account['username']}
+- Niche: {account.get('niche', 'Not specified')}
+- Followers: {account.get('follower_count', 'Unknown')}
+- Following: {account.get('following_count', 'Unknown')}
+- Total Posts: {account.get('media_count', 'Unknown')}
+- Account Type: {account.get('account_type', 'Unknown')}
+
+REAL ENGAGEMENT METRICS (from last {posts_analysis.get('total_posts_analyzed', 0)} posts):
+- Average Likes per Post: {posts_analysis.get('avg_likes', 'N/A')}
+- Average Comments per Post: {posts_analysis.get('avg_comments', 'N/A')}
+- Calculated Engagement Rate: {posts_analysis.get('engagement_rate', 'N/A')}%
+- Total Likes (recent posts): {posts_analysis.get('total_likes', 'N/A')}
+- Total Comments (recent posts): {posts_analysis.get('total_comments', 'N/A')}
+
+CONTENT MIX:
+- Images: {posts_analysis.get('post_types', {}).get('IMAGE', 0)}
+- Videos/Reels: {posts_analysis.get('post_types', {}).get('VIDEO', 0)}
+- Carousels: {posts_analysis.get('post_types', {}).get('CAROUSEL_ALBUM', 0)}
+
+BEST PERFORMING POST:
+{json.dumps(posts_analysis.get('best_performing_post', {}), indent=2) if posts_analysis.get('best_performing_post') else 'N/A'}
+
+SAMPLE CAPTIONS:
+{chr(10).join(['- ' + c[:100] for c in posts_analysis.get('recent_captions', [])[:3]]) if posts_analysis.get('recent_captions') else 'No captions available'}
+
+Based on this REAL data, provide specific, actionable analysis."""
     
     try:
         ai_response = await generate_ai_content(prompt, system_message, timeout_seconds=AI_TIMEOUT_MEDIUM)
@@ -56,37 +190,65 @@ async def create_audit(data: AuditRequest, request: Request):
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
         audit_data = json.loads(cleaned.strip())
+        
+        # Use real engagement rate if available
+        if posts_analysis.get('engagement_rate'):
+            audit_data['real_engagement_rate'] = posts_analysis.get('engagement_rate')
+            
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"AI parsing error: {e}")
+        # Fallback with real data if available
+        real_engagement = posts_analysis.get('engagement_rate', 3.5)
+        engagement_score = min(100, int(real_engagement * 15)) if real_engagement else 65
+        
         audit_data = {
-            "engagement_score": 65, "shadowban_risk": "medium", "content_consistency": 70,
-            "estimated_followers": account.get("follower_count", 5000),
-            "estimated_engagement_rate": account.get("engagement_rate", 3.5),
-            "growth_mistakes": ["Inconsistent posting schedule", "Not using trending audio in Reels",
-                               "Weak call-to-actions in captions", "Missing engagement in first 30 minutes"],
-            "recommendations": ["Post consistently at peak hours", "Use trending audio in Reels",
-                               "Add strong CTAs for saves and shares", "Engage with similar accounts before posting",
-                               "Use 20-30 relevant hashtags"],
-            "roadmap": {"week1": ["Audit content", "Create calendar", "Research trends"],
-                       "week2": ["Post 5 Reels", "Engage daily", "Optimize bio"],
-                       "week3": ["Analyze performance", "Double down on winners"],
-                       "week4": ["Review analytics", "Plan next month"]}
+            "engagement_score": engagement_score,
+            "shadowban_risk": "low" if real_engagement > 3 else "medium" if real_engagement > 1 else "high",
+            "content_consistency": 70,
+            "real_engagement_rate": real_engagement,
+            "growth_mistakes": [
+                f"Average {posts_analysis.get('avg_comments', 0):.0f} comments per post - need more engagement",
+                "Content mix could be improved" if posts_analysis.get('post_types', {}).get('VIDEO', 0) < 3 else "Good video content",
+                "Inconsistent posting schedule",
+                "Captions may need stronger CTAs"
+            ],
+            "recommendations": [
+                f"Your engagement rate is {real_engagement:.2f}% - {'good' if real_engagement > 3 else 'needs improvement'}",
+                f"Post more Reels - you have {posts_analysis.get('post_types', {}).get('VIDEO', 0)} videos",
+                "Engage with followers in first 30 minutes of posting",
+                "Use trending audio in Reels",
+                f"Your best post got {posts_analysis.get('best_performing_post', {}).get('likes', 0)} likes - analyze what worked"
+            ],
+            "roadmap": {
+                "week1": ["Audit top performing content", "Create content calendar", "Research trending audio"],
+                "week2": ["Post 5 Reels", "Engage daily for 30 min", "Optimize bio"],
+                "week3": ["Analyze performance", "Double down on what works"],
+                "week4": ["Review analytics", "Plan next month strategy"]
+            }
         }
     
     await increment_ai_usage(user.user_id, db, feature="audit")
     
     audit_id = f"audit_{uuid.uuid4().hex[:12]}"
     audit_doc = {
-        "audit_id": audit_id, "account_id": data.account_id, "user_id": user.user_id,
-        "username": account["username"], "engagement_score": audit_data.get("engagement_score", 0),
+        "audit_id": audit_id,
+        "account_id": data.account_id,
+        "user_id": user.user_id,
+        "username": account["username"],
+        "engagement_score": audit_data.get("engagement_score", 0),
         "shadowban_risk": audit_data.get("shadowban_risk", "unknown"),
         "content_consistency": audit_data.get("content_consistency", 0),
-        "estimated_followers": audit_data.get("estimated_followers"),
-        "estimated_engagement_rate": audit_data.get("estimated_engagement_rate"),
+        "estimated_followers": account.get("follower_count"),
+        "estimated_engagement_rate": audit_data.get("real_engagement_rate", posts_analysis.get("engagement_rate")),
         "growth_mistakes": audit_data.get("growth_mistakes", []),
         "recommendations": audit_data.get("recommendations", []),
         "roadmap": audit_data.get("roadmap", {}),
+        "posts_analyzed": posts_analysis.get("total_posts_analyzed", 0),
+        "avg_likes": posts_analysis.get("avg_likes"),
+        "avg_comments": posts_analysis.get("avg_comments"),
+        "content_analysis": audit_data.get("content_analysis"),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.audits.insert_one(audit_doc)
