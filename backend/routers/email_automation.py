@@ -320,7 +320,7 @@ EMAIL_TEMPLATES = {
     }
 }
 
-FRONTEND_URL = "https://server-restore-2.preview.emergentagent.com"
+FRONTEND_URL = "https://email-send-fail.preview.emergentagent.com"
 
 async def send_automated_email(email_type: str, recipient_email: str, data: dict):
     """Send an automated email based on template type"""

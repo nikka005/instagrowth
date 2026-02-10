@@ -10,7 +10,7 @@ import os
 import time
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://server-restore-2.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://email-send-fail.preview.emergentagent.com')
 
 # Test credentials - unique for this test run
 TEST_USER_EMAIL = f"testuser_{uuid.uuid4().hex[:8]}@example.com"
