@@ -106,10 +106,69 @@ async def health_check():
 @app.get("/api/plans")
 async def get_plans():
     return [
-        {"id": "starter", "name": "Starter", "price": 19, "accounts": 1, "ai_usage": 10, "team": False},
-        {"id": "pro", "name": "Pro", "price": 49, "accounts": 5, "ai_usage": 100, "team": False},
-        {"id": "agency", "name": "Agency", "price": 149, "accounts": 25, "ai_usage": 500, "team": True},
-        {"id": "enterprise", "name": "Enterprise", "price": 299, "accounts": 100, "ai_usage": 2000, "team": True}
+        {
+            "plan_id": "starter", 
+            "name": "Starter", 
+            "price": 19, 
+            "accounts": 1, 
+            "ai_usage": 10, 
+            "team": False,
+            "features": [
+                "1 Instagram Account",
+                "10 AI Generations/month",
+                "Basic Audit Reports",
+                "Content Ideas",
+                "Email Support"
+            ]
+        },
+        {
+            "plan_id": "pro", 
+            "name": "Pro", 
+            "price": 49, 
+            "accounts": 5, 
+            "ai_usage": 100, 
+            "team": False,
+            "features": [
+                "5 Instagram Accounts",
+                "100 AI Generations/month",
+                "Detailed Audit Reports",
+                "Growth Plans",
+                "Competitor Analysis",
+                "Priority Support"
+            ]
+        },
+        {
+            "plan_id": "agency", 
+            "name": "Agency", 
+            "price": 149, 
+            "accounts": 25, 
+            "ai_usage": 500, 
+            "team": True,
+            "features": [
+                "25 Instagram Accounts",
+                "500 AI Generations/month",
+                "Team Collaboration",
+                "White-label Reports",
+                "API Access",
+                "Dedicated Support"
+            ]
+        },
+        {
+            "plan_id": "enterprise", 
+            "name": "Enterprise", 
+            "price": 299, 
+            "accounts": 100, 
+            "ai_usage": 2000, 
+            "team": True,
+            "features": [
+                "100 Instagram Accounts",
+                "2000 AI Generations/month",
+                "Unlimited Team Members",
+                "Custom Integrations",
+                "SLA Guarantee",
+                "Personal Account Manager"
+            ]
+        }
     ]
 
 # Dashboard stats endpoint
