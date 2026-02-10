@@ -193,6 +193,8 @@ class GrowthPlan(BaseModel):
     user_id: str
     duration: int
     daily_tasks: List[Dict[str, Any]]
+    based_on_real_data: Optional[bool] = None
+    metrics_at_creation: Optional[Dict[str, Any]] = None
     created_at: datetime
 
 # DM Template Models
