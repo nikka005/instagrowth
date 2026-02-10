@@ -250,45 +250,88 @@ async def refresh_instagram_data(account_id: str, request: Request):
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    if not account.get("access_token") or not account.get("instagram_id"):
+    if not account.get("access_token"):
         raise HTTPException(status_code=400, detail="Account not connected via Instagram API")
+    
+    access_token = account["access_token"]
+    instagram_id = account.get("instagram_id") or account.get("instagram_user_id")
     
     try:
         async with httpx.AsyncClient() as client:
-            # Use Instagram Graph API (not Meta Graph API) for basic profile
+            # First try Instagram Graph API for basic profile
             response = await client.get(
                 f"{INSTAGRAM_GRAPH_URL}/me",
                 params={
-                    "fields": "id,username,account_type,media_count",
-                    "access_token": account["access_token"]
-                }
+                    "fields": "id,username,account_type,media_count,profile_picture_url,followers_count,follows_count,biography,name",
+                    "access_token": access_token
+                },
+                timeout=15
             )
             
-            if response.status_code != 200:
-                error_data = response.json()
-                error_msg = error_data.get("error", {}).get("message", "Failed to refresh data")
-                logger.error(f"Instagram API error: {error_msg}")
-                raise HTTPException(status_code=400, detail=error_msg)
+            update_data = {
+                "last_refreshed": datetime.now(timezone.utc).isoformat()
+            }
             
-            data = response.json()
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"Instagram API response: {data}")
+                
+                update_data.update({
+                    "username": data.get("username", account.get("username")),
+                    "media_count": data.get("media_count"),
+                    "account_type": data.get("account_type"),
+                    "profile_picture": data.get("profile_picture_url"),
+                    "follower_count": data.get("followers_count"),
+                    "following_count": data.get("follows_count"),
+                    "biography": data.get("biography"),
+                    "name": data.get("name")
+                })
+            else:
+                # Try with Facebook Graph API for business accounts
+                logger.info(f"Basic API failed, trying business account endpoint")
+                
+                if instagram_id:
+                    biz_response = await client.get(
+                        f"{META_GRAPH_URL}/{instagram_id}",
+                        params={
+                            "fields": "id,username,name,profile_picture_url,followers_count,follows_count,media_count,biography",
+                            "access_token": access_token
+                        },
+                        timeout=15
+                    )
+                    
+                    if biz_response.status_code == 200:
+                        data = biz_response.json()
+                        logger.info(f"Business API response: {data}")
+                        
+                        update_data.update({
+                            "username": data.get("username", account.get("username")),
+                            "media_count": data.get("media_count"),
+                            "profile_picture": data.get("profile_picture_url"),
+                            "follower_count": data.get("followers_count"),
+                            "following_count": data.get("follows_count"),
+                            "biography": data.get("biography"),
+                            "name": data.get("name")
+                        })
+                    else:
+                        error_data = biz_response.json()
+                        logger.warning(f"Business API error: {error_data}")
+            
+            # Remove None values
+            update_data = {k: v for k, v in update_data.items() if v is not None}
             
             await db.instagram_accounts.update_one(
                 {"account_id": account_id},
-                {"$set": {
-                    "username": data.get("username", account["username"]),
-                    "media_count": data.get("media_count"),
-                    "account_type": data.get("account_type"),
-                    "last_refreshed": datetime.now(timezone.utc).isoformat()
-                }}
+                {"$set": update_data}
             )
             
             return {
                 "message": "Account refreshed",
-                "username": data.get("username"),
-                "media_count": data.get("media_count")
+                "data": update_data
             }
             
     except httpx.HTTPError as e:
+        logger.error(f"HTTP error refreshing account: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to connect to Instagram API: {str(e)}")
 
 @router.get("/{account_id}/insights")
