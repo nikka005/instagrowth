@@ -157,6 +157,10 @@ class Audit(BaseModel):
     growth_mistakes: List[str]
     recommendations: List[str]
     roadmap: Dict[str, Any]
+    posts_analyzed: Optional[int] = None
+    avg_likes: Optional[float] = None
+    avg_comments: Optional[float] = None
+    content_analysis: Optional[str] = None
     created_at: datetime
 
 # Content Models
