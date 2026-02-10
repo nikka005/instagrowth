@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from typing import List, Optional
 import uuid
 import json
+import httpx
+import logging
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -13,7 +15,65 @@ from database import get_database
 from dependencies import get_current_user, check_ai_usage, increment_ai_usage
 from services import generate_ai_content, AI_TIMEOUT_LONG
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/growth-plans", tags=["Growth Planner"])
+
+INSTAGRAM_GRAPH_URL = "https://graph.instagram.com"
+
+async def fetch_account_metrics(access_token: str):
+    """Fetch real account metrics for growth planning"""
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get profile
+            profile_resp = await client.get(
+                f"{INSTAGRAM_GRAPH_URL}/me",
+                params={
+                    "fields": "id,username,followers_count,follows_count,media_count",
+                    "access_token": access_token
+                },
+                timeout=10
+            )
+            
+            # Get recent media
+            media_resp = await client.get(
+                f"{INSTAGRAM_GRAPH_URL}/me/media",
+                params={
+                    "fields": "id,media_type,like_count,comments_count,timestamp",
+                    "limit": 20,
+                    "access_token": access_token
+                },
+                timeout=10
+            )
+            
+            profile = profile_resp.json() if profile_resp.status_code == 200 else {}
+            media = media_resp.json().get("data", []) if media_resp.status_code == 200 else []
+            
+            # Calculate metrics
+            total_likes = sum(m.get("like_count", 0) for m in media)
+            total_comments = sum(m.get("comments_count", 0) for m in media)
+            avg_engagement = (total_likes + total_comments) / len(media) if media else 0
+            followers = profile.get("followers_count", 0)
+            engagement_rate = (avg_engagement / followers * 100) if followers else 0
+            
+            # Analyze content types
+            content_types = {}
+            for m in media:
+                t = m.get("media_type", "IMAGE")
+                content_types[t] = content_types.get(t, 0) + 1
+            
+            return {
+                "followers": followers,
+                "following": profile.get("follows_count", 0),
+                "media_count": profile.get("media_count", 0),
+                "avg_likes": total_likes / len(media) if media else 0,
+                "avg_comments": total_comments / len(media) if media else 0,
+                "engagement_rate": round(engagement_rate, 2),
+                "content_mix": content_types,
+                "posts_analyzed": len(media)
+            }
+    except Exception as e:
+        logger.warning(f"Could not fetch account metrics: {e}")
+    return {}
 
 @router.post("", response_model=GrowthPlan)
 async def create_growth_plan(data: GrowthPlanRequest, request: Request):
@@ -29,10 +89,40 @@ async def create_growth_plan(data: GrowthPlanRequest, request: Request):
     
     niche = data.niche or account.get("niche", "general")
     
-    system_message = """Create actionable daily growth plan. Return JSON with 'daily_tasks' array.
-    Each task: day (int), title (string), description (string), type (post/engage/analyze/learn), priority (high/medium/low)."""
+    # Fetch real metrics if available
+    real_metrics = {}
+    if account.get("access_token"):
+        logger.info(f"Fetching real metrics for growth plan @{account['username']}")
+        real_metrics = await fetch_account_metrics(account["access_token"])
     
-    prompt = f"Create {data.duration}-day Instagram growth plan for {niche} niche."
+    # Build data-driven prompt
+    metrics_context = ""
+    if real_metrics:
+        metrics_context = f"""
+REAL ACCOUNT METRICS:
+- Current Followers: {real_metrics.get('followers', 0):,}
+- Following: {real_metrics.get('following', 0):,}
+- Total Posts: {real_metrics.get('media_count', 0)}
+- Average Likes/Post: {real_metrics.get('avg_likes', 0):.0f}
+- Average Comments/Post: {real_metrics.get('avg_comments', 0):.0f}
+- Engagement Rate: {real_metrics.get('engagement_rate', 0)}%
+- Content Mix: {real_metrics.get('content_mix', {})}
+
+Create a plan that addresses these specific metrics and helps improve engagement."""
+    
+    system_message = f"""Create an actionable, data-driven daily growth plan based on REAL account data.
+Return JSON with 'daily_tasks' array.
+Each task must have: day (int), title (string), description (string), type (post/engage/analyze/learn), priority (high/medium/low)
+Make tasks SPECIFIC to the account's current performance.
+{metrics_context}"""
+    
+    prompt = f"""Create a personalized {data.duration}-day Instagram growth plan for @{account['username']}:
+- Niche: {niche}
+- Current Followers: {account.get('follower_count', real_metrics.get('followers', 'Unknown'))}
+- Engagement Rate: {account.get('engagement_rate', real_metrics.get('engagement_rate', 'Unknown'))}%
+{metrics_context}
+
+Focus on realistic, achievable goals based on their current metrics."""
     
     try:
         ai_response = await generate_ai_content(prompt, system_message, timeout_seconds=AI_TIMEOUT_LONG)
@@ -47,22 +137,39 @@ async def create_growth_plan(data: GrowthPlanRequest, request: Request):
         daily_tasks = plan_data.get("daily_tasks", [])
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        logger.error(f"Growth plan generation error: {e}")
+        # Generate fallback with real data context
         daily_tasks = []
         for day in range(1, data.duration + 1):
-            task_type = ["post", "engage", "analyze", "learn"][day % 4]
+            task_types = ["post", "engage", "analyze", "learn"]
+            task_type = task_types[(day - 1) % 4]
+            
+            # Customize based on real metrics
+            if real_metrics.get('engagement_rate', 0) < 2:
+                priority = "high" if task_type == "engage" else "medium"
+            else:
+                priority = "high" if day <= 7 else "medium"
+            
             daily_tasks.append({
-                "day": day, "title": f"Day {day}: {task_type.capitalize()} Focus",
-                "description": f"Focus on {task_type} activities",
-                "type": task_type, "priority": "high" if day <= 7 else "medium"
+                "day": day,
+                "title": f"Day {day}: {task_type.capitalize()} Focus",
+                "description": f"Focus on {task_type} activities to improve your {real_metrics.get('engagement_rate', 3)}% engagement",
+                "type": task_type,
+                "priority": priority
             })
     
     await increment_ai_usage(user.user_id, db, feature="growth_plan")
     
     plan_id = f"plan_{uuid.uuid4().hex[:12]}"
     plan_doc = {
-        "plan_id": plan_id, "account_id": data.account_id, "user_id": user.user_id,
-        "duration": data.duration, "daily_tasks": daily_tasks,
+        "plan_id": plan_id,
+        "account_id": data.account_id,
+        "user_id": user.user_id,
+        "duration": data.duration,
+        "daily_tasks": daily_tasks,
+        "based_on_real_data": bool(real_metrics),
+        "metrics_at_creation": real_metrics if real_metrics else None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.growth_plans.insert_one(plan_doc)
