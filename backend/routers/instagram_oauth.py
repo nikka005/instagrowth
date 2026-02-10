@@ -4,9 +4,12 @@ from datetime import datetime, timezone
 import httpx
 import uuid
 import os
+import logging
 
 from database import get_database
 from dependencies import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/instagram", tags=["Instagram API"])
 
