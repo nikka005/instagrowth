@@ -112,18 +112,32 @@ class InstagramAccount(BaseModel):
     user_id: str
     team_id: Optional[str] = None
     username: str
-    niche: str
+    niche: str = "Other"
     notes: Optional[str] = None
     client_name: Optional[str] = None
     client_email: Optional[str] = None
+    # OAuth fields
+    instagram_user_id: Optional[str] = None
+    instagram_id: Optional[str] = None
+    access_token: Optional[str] = None
+    token_expires_at: Optional[float] = None
+    connection_status: Optional[str] = None  # "connected" or None
+    connected_at: Optional[str] = None
+    # Profile data
+    profile_picture: Optional[str] = None
+    account_type: Optional[str] = None
+    # Metrics
     follower_count: Optional[int] = None
+    following_count: Optional[int] = None
+    media_count: Optional[int] = None
     engagement_rate: Optional[float] = None
     estimated_reach: Optional[int] = None
     posting_frequency: Optional[str] = None
     best_posting_time: Optional[str] = None
     last_audit_date: Optional[datetime] = None
+    last_refreshed: Optional[str] = None
     status: str = "active"
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
 # Audit Models
 class AuditRequest(BaseModel):
