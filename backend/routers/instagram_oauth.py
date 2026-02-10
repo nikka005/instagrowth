@@ -160,11 +160,11 @@ async def instagram_callback(request: Request, code: str = None, state: str = No
                 access_token = short_lived_token
                 expires_in = 3600
             
-            # Get Instagram user profile
+            # Get Instagram user profile with extended fields
             profile_response = await client.get(
                 f"{INSTAGRAM_GRAPH_URL}/me",
                 params={
-                    "fields": "id,username,account_type,media_count",
+                    "fields": "id,username,account_type,media_count,profile_picture_url,followers_count,follows_count,biography,name",
                     "access_token": access_token
                 }
             )
@@ -173,6 +173,7 @@ async def instagram_callback(request: Request, code: str = None, state: str = No
                 return RedirectResponse(f"{site_url}/accounts?error=Failed to get Instagram profile")
             
             profile_data = profile_response.json()
+            logger.info(f"Profile data received: {profile_data}")
             
             # Save the connected account to instagram_accounts collection
             account_id = f"ig_{uuid.uuid4().hex[:12]}"
@@ -188,14 +189,16 @@ async def instagram_callback(request: Request, code: str = None, state: str = No
                 "niche": "Other",  # Default niche, user can update later
                 "notes": f"Connected via Instagram API on {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
                 "account_type": profile_data.get("account_type"),
-                "follower_count": None,
-                "following_count": None,
+                "follower_count": profile_data.get("followers_count"),
+                "following_count": profile_data.get("follows_count"),
                 "media_count": profile_data.get("media_count"),
+                "biography": profile_data.get("biography"),
+                "name": profile_data.get("name"),
                 "engagement_rate": None,
                 "estimated_reach": None,
                 "posting_frequency": None,
                 "best_posting_time": None,
-                "profile_picture": None,
+                "profile_picture": profile_data.get("profile_picture_url"),
                 "access_token": access_token,
                 "token_expires_at": datetime.now(timezone.utc).timestamp() + expires_in,
                 "connection_status": "connected",
