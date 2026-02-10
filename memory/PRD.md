@@ -1,231 +1,145 @@
 # InstaGrowth OS - Product Requirements Document
 
-## Original Problem Statement
-Build InstaGrowth OS - an AI-powered Instagram Growth & Management Platform for freelancers and agencies.
+## Project Overview
+InstaGrowth OS is an AI-powered Instagram Growth & Management Platform that helps users manage their Instagram accounts, run audits, generate content, and track performance.
 
-## Current Status: PRODUCTION READY ✅ (230+ Features)
+## Core Features
 
----
+### User Features
+1. **Instagram Account Management**
+   - Connect Instagram accounts via OAuth (Instagram Business Login API)
+   - Manual account addition
+   - View account metrics (followers, following, posts)
+   - Refresh data from Instagram API
 
-## NEW FEATURES COMPLETED (Feb 8, 2025)
+2. **AI Audit System**
+   - Generate engagement scores
+   - Shadowban risk assessment
+   - Content consistency analysis
+   - Growth recommendations
 
-### 1. Referral/Affiliate System ✅
-- User referral code generation
-- Referral link sharing with copy button
-- Click, signup, and conversion tracking
-- Commission calculation (20% of first payment)
-- Payout request system with $50 minimum
-- Admin referral management dashboard
-- Top referrers leaderboard
-- Payout approval workflow
-- Automatic email notifications on rewards
+3. **Content Generation**
+   - AI-powered captions
+   - Hashtag suggestions
+   - Post ideas by niche
 
-### 2. AI Credits Integration ✅
-- Credits displayed prominently on user dashboard
-- Feature-specific credit costs (1-15 credits per action)
-- Real-time credit deduction
-- Credit history tracking
-- Low credit warnings (automatic email at <20%)
-- Bonus credits for referrals
-- Monthly reset tracking
+4. **Growth Planner**
+   - Daily task generation
+   - Best posting times
+   - Content mix recommendations
 
-### 3. Email Automation System ✅ (COMPLETE)
-- **9 Email Templates:**
-  1. Welcome Email - Triggered on user registration
-  2. Subscription Activated - On plan upgrade
-  3. 7-Day Renewal Reminder - Scheduled
-  4. 3-Day Renewal Reminder - Scheduled
-  5. Low Credits Alert - Triggered when credits < 20%
-  6. Subscription Cancelled - On cancellation
-  7. Weekly Digest - Scheduled weekly
-  8. Inactivity Reminder - 7+ days inactive
-  9. Referral Reward - When someone signs up with referral
-- Admin UI for template management
-- Enable/disable templates
-- Send test emails
-- Email logs with filtering
-- Run scheduled tasks manually
-- Preview templates in modal
+5. **Billing & Plans**
+   - Starter ($19/mo): 1 account, 10 AI generations
+   - Pro ($49/mo): 5 accounts, 100 AI generations
+   - Agency ($149/mo): 25 accounts, 500 AI generations, team features
+   - Enterprise ($299/mo): 100 accounts, 2000 AI generations
 
-### 4. Announcements System ✅
-- Admin announcement creation
-- Multiple types (info, warning, success, update, maintenance)
-- Target audience filtering
-- Date scheduling
-- User dismissal tracking
-- Dashboard announcement banners
+### Admin Panel Features
+1. **Dashboard Overview**
+   - Total users, subscriptions, accounts
+   - Revenue charts
+   - User growth metrics
+   - AI usage tracking
 
-### 5. Enhanced Onboarding ✅
-- Auto-redirect for new users
-- Goal-based personalization
-- Completion tracking
+2. **System Settings**
+   - OpenAI API key configuration
+   - Stripe payment integration
+   - Instagram Business Login API setup
+   - Resend email integration
 
----
+3. **User Management**
+   - View all users
+   - Manage subscriptions
+   - View Instagram accounts
 
-## Complete Feature List (230+ Total)
+## Technical Architecture
 
-### Email Automation (9 Templates)
-| Template | Trigger | Status |
-|----------|---------|--------|
-| Welcome Email | User Registration | ✅ Active |
-| Subscription Activated | Plan Upgrade | ✅ Active |
-| 7-Day Renewal Reminder | Scheduled | ✅ Active |
-| 3-Day Renewal Reminder | Scheduled | ✅ Active |
-| Low Credits Alert | Credits < 20% | ✅ Active |
-| Subscription Cancelled | Cancellation | ✅ Active |
-| Weekly Digest | Sunday | ✅ Active |
-| Inactivity Reminder | 7+ days inactive | ✅ Active |
-| Referral Reward | Referral signup | ✅ Active |
+### Backend (FastAPI + Python)
+- Location: `/app/backend/`
+- Entry: `server.py`
+- Database: MongoDB (via motor async driver)
+- Auth: JWT-based authentication
 
-### Referral Program Configuration
-| Setting | Value |
-|---------|-------|
-| Referrer Reward | 50 credits |
-| Referee Reward | 25 credits |
-| Commission Rate | 20% |
-| Minimum Payout | $50 |
+### Frontend (React)
+- Location: `/app/frontend/`
+- UI: Tailwind CSS + Shadcn components
+- State: React hooks
 
-### Credit Costs per Feature
-| Feature | Credits |
-|---------|---------|
-| AI Audit | 10 |
-| Caption | 1 |
-| Hashtags | 1 |
-| Content Ideas | 2 |
-| Hooks | 1 |
-| Growth Plan | 15 |
-| Competitor Analysis | 5 |
-| DM Reply | 1 |
-| Posting Recommendations | 3 |
-| A/B Test | 2 |
+### Database Schema (MongoDB)
+- `users`: User accounts and subscription info
+- `admins`: Admin panel users
+- `instagram_accounts`: Connected Instagram accounts
+- `system_settings`: API keys and platform config
+- `audits`: AI audit reports
+- `content_items`: Generated content
 
-### Plan Credit Allocations (Monthly)
-| Plan | Credits |
-|------|---------|
-| Free | 5 |
-| Starter ($19) | 10 |
-| Pro ($49) | 100 |
-| Agency ($149) | 500 |
-| Enterprise ($299) | 2000 |
+## Third-Party Integrations
+1. **OpenAI GPT-5.2** - AI content generation (via Emergent Universal Key)
+2. **Stripe** - Payment processing
+3. **Resend** - Transactional emails
+4. **Instagram Business Login API** - OAuth and data access
 
----
+## Completed Work (February 2026)
 
-## API Endpoints (New - Feb 8)
+### Session 1 - Core Fixes
+- [x] Fixed collection mismatch: Instagram OAuth now saves to `instagram_accounts` collection
+- [x] Fixed data model: Added OAuth-specific fields (connection_status, instagram_id, etc.)
+- [x] Fixed /api/plans endpoint to include features array for billing page
+- [x] Updated requirements.txt with all dependencies
+- [x] Created test user for staging environment
+- [x] Verified admin panel login and System Settings page
+- [x] Verified Billing page displays plans correctly with features
 
-### Email Automation
-```
-GET  /api/email-automation/templates - List all templates
-GET  /api/email-automation/templates/{id} - Get template with HTML
-PUT  /api/email-automation/templates/{id}/toggle?enabled=true/false
-POST /api/email-automation/send-test?template_id=&recipient=
-GET  /api/email-automation/logs?limit=&email_type=&status=
-GET  /api/email-automation/stats
-POST /api/email-automation/run-scheduled-tasks
-POST /api/email-automation/run-weekly-digest
-```
+## Known Issues
 
-### Referrals
-```
-GET  /api/referrals/code - Get/create referral code
-GET  /api/referrals/stats - Detailed statistics
-POST /api/referrals/track-click?code= - Track click
-POST /api/referrals/request-payout - Request payout
-GET  /api/referrals/admin/overview - Admin overview
-GET  /api/referrals/admin/payouts?status= - Payout list
-PUT  /api/referrals/admin/payouts/{id}?status= - Process payout
-```
+### P0 - Critical
+- Instagram OAuth needs proper Meta App configuration (App ID, Secret, redirect_uri)
+- Meta App Review required for production use
 
----
+### P1 - High
+- Email sending requires valid Resend API key with full access
+- Sender email must be from verified domain
 
-## Test Results (Feb 8, 2025)
+### P2 - Medium
+- WebSocket 404 errors in logs (admin-ws endpoint)
 
-| Test Suite | Result |
-|------------|--------|
-| Backend Email Automation | 25/25 (100%) |
-| Frontend Email Automation | 100% |
-| Referral System | All Passed |
-| Overall | ✅ All Systems Operational |
+## Environment Variables
 
----
+### Backend (.env)
+- MONGO_URL
+- DB_NAME
+- JWT_SECRET
+- EMERGENT_LLM_KEY
+- STRIPE_API_KEY
+- RESEND_API_KEY
+- SENDER_EMAIL
 
-## Admin Credentials
+### Frontend (.env)
+- REACT_APP_BACKEND_URL
 
-| Field | Value |
-|-------|-------|
-| URL | `/admin-panel/login` |
-| Email | `superadmin@instagrowth.com` |
-| Password | `SuperAdmin123!` |
-| Security Code | `INSTAGROWTH_ADMIN_2024` |
+## API Endpoints
 
----
+### User APIs
+- POST /api/auth/login - User login
+- POST /api/auth/register - User registration
+- GET /api/accounts - Get user's Instagram accounts
+- GET /api/instagram/auth/url - Get Instagram OAuth URL
+- GET /api/instagram/callback - OAuth callback handler
+- GET /api/plans - Get subscription plans
 
-## Integration Status
+### Admin APIs
+- POST /api/admin-panel/auth/login - Admin login
+- GET /api/admin-panel/settings - Get system settings
+- PUT /api/admin-panel/settings - Update system settings
+- POST /api/admin-panel/settings/test-connection - Test API connections
 
-| Service | Status | Notes |
-|---------|--------|-------|
-| OpenAI | ✅ Configured | Emergent Universal Key |
-| Resend | ✅ Configured | User API key - domain verification needed |
-| Stripe | ⚙️ Ready | Needs live keys |
-| Meta/Instagram | ⚙️ Ready | Needs app approval |
+## Credentials (Staging)
 
----
+### Test User
+- Email: gurpreets87400@gmail.com
+- Password: Nikka@123
 
-## Remaining Items (Future)
-1. Stripe payment integration (requires user keys)
-2. Real Instagram data (requires Meta App Review)
-3. DM/Email template management UI for users
-4. Light/Dark mode toggle
-5. Mobile responsiveness audit
-
----
-
-## File Structure
-
-```
-/app
-├── backend/
-│   ├── routers/
-│   │   ├── email_automation.py (9 templates, scheduled tasks)
-│   │   ├── referrals.py (affiliate system)
-│   │   ├── credits.py (AI credits)
-│   │   └── announcements.py
-│   └── services/__init__.py (email sending via Resend)
-├── frontend/src/
-│   ├── pages/
-│   │   ├── ReferralsPage.jsx (user referral dashboard)
-│   │   ├── DashboardPage.jsx (credits display, announcements)
-│   │   └── admin-panel/
-│   │       ├── EmailAutomationPage.jsx
-│   │       ├── ReferralsPage.jsx
-│   │       └── AnnouncementsPage.jsx
-│   └── components/
-│       ├── DashboardLayout.jsx (Referrals nav link)
-│       └── AdminPanelLayout.jsx (Email Automation nav link)
-└── memory/PRD.md
-```
-
----
-
-## Last Updated
-February 8, 2025
-
-## Documentation Added
-- **User Help Center** (`/help`) - Complete user guide with:
-  - Getting Started guide
-  - Instagram account connection
-  - AI Audit walkthrough
-  - Content Engine tutorial
-  - Growth Planner guide
-  - DM Templates usage
-  - Competitor Analysis
-  - A/B Testing guide
-  - Referral Program explanation
-  - Billing & Plans overview
-  - Credit costs summary
-
-- **Admin Documentation** (Updated `/admin-panel/docs`) - Now includes:
-  - Referral Program management
-  - Email Automation system
-  - Announcements management
-  - Support Tickets handling
-  - All original sections updated
+### Admin
+- Email: superadmin@instagrowth.com
+- Password: SuperAdmin123!
+- Security Code: INSTAGROWTH_ADMIN_2024
