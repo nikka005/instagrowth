@@ -535,7 +535,7 @@ async def test_api_connection(service: str, request: Request = None):
                     return {"success": False, "message": f"Resend API error: {response.status_code}"}
         
         elif service == "meta":
-            # Test Meta/Instagram API connection
+            # Test Meta/Instagram API connection using Facebook Graph API
             access_token = settings.get("meta_access_token")
             if not access_token:
                 return {"success": False, "message": "Meta access token not configured"}
@@ -551,6 +551,44 @@ async def test_api_connection(service: str, request: Request = None):
                     data = response.json()
                     error_msg = data.get("error", {}).get("message", f"API error: {response.status_code}")
                     return {"success": False, "message": error_msg}
+        
+        elif service == "instagram":
+            # Test Instagram Graph API connection
+            # First try with long-lived token, then with app credentials
+            access_token = settings.get("meta_access_token") or settings.get("graph_api_token")
+            app_id = settings.get("meta_app_id")
+            app_secret = settings.get("meta_app_secret")
+            
+            if access_token:
+                # Test with access token using Instagram Graph API
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        f"https://graph.instagram.com/me?fields=id,username&access_token={access_token}",
+                        timeout=10
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        username = data.get("username", "Unknown")
+                        return {"success": True, "message": f"Instagram API connected! Username: @{username}"}
+                    else:
+                        # Try Facebook Graph API as fallback
+                        response2 = await client.get(
+                            f"https://graph.facebook.com/v18.0/me?access_token={access_token}",
+                            timeout=10
+                        )
+                        if response2.status_code == 200:
+                            return {"success": True, "message": "Instagram API connected via Facebook Graph"}
+                        else:
+                            data = response.json()
+                            error_msg = data.get("error", {}).get("message", f"API error: {response.status_code}")
+                            return {"success": False, "message": f"Token invalid: {error_msg}"}
+            
+            elif app_id and app_secret:
+                # Just verify app credentials are set
+                return {"success": True, "message": "Instagram App credentials configured. Users can connect via OAuth."}
+            
+            else:
+                return {"success": False, "message": "No Instagram API credentials configured. Add App ID/Secret or Access Token."}
         
         else:
             return {"success": False, "message": f"Unknown service: {service}"}
