@@ -178,6 +178,7 @@ class ContentItem(BaseModel):
     content_type: str
     content: List[str]
     is_favorite: bool = False
+    based_on_real_data: Optional[bool] = None
     created_at: datetime
 
 # Growth Plan Models
